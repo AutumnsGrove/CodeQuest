@@ -39,12 +39,17 @@ func DefaultStatBarConfig() StatBarConfig {
 //   - Session stats (commits and lines added today)
 //
 // Parameters:
-//   - char: The character whose stats to display
+//   - char: The character whose stats to display (nil-safe)
 //   - width: The total width available for the stat bar (minimum 40 characters)
 //
 // Returns:
 //   - string: The rendered stat bar as a formatted string
 func RenderStatBar(char *game.Character, width int) string {
+	// Handle nil character gracefully
+	if char == nil {
+		return renderNilCharacterStatBar(width)
+	}
+
 	config := DefaultStatBarConfig()
 	config.Width = width
 	return RenderStatBarWithConfig(char, config)
@@ -247,12 +252,17 @@ func renderSessionStats(char *game.Character, width int) string {
 // This version shows only essential information: level, XP, and streak.
 //
 // Parameters:
-//   - char: The character whose stats to display
+//   - char: The character whose stats to display (nil-safe)
 //   - width: The total width available for the stat bar
 //
 // Returns:
 //   - string: The rendered compact stat bar
 func RenderCompactStatBar(char *game.Character, width int) string {
+	// Handle nil character gracefully
+	if char == nil {
+		return renderNilCharacterStatBar(width)
+	}
+
 	config := DefaultStatBarConfig()
 	config.Width = width
 	config.Compact = true
@@ -269,11 +279,19 @@ func RenderCompactStatBar(char *game.Character, width int) string {
 // Useful for displaying in headers or alongside other content.
 //
 // Parameters:
-//   - char: The character whose stats to display
+//   - char: The character whose stats to display (nil-safe)
 //
 // Returns:
 //   - string: A compact one-line stat badge
 func RenderStatBadge(char *game.Character) string {
+	// Handle nil character gracefully
+	if char == nil {
+		noCharStyle := lipgloss.NewStyle().
+			Foreground(ui.ColorDim).
+			Italic(true)
+		return noCharStyle.Render("No character")
+	}
+
 	badgeStyle := lipgloss.NewStyle().
 		Foreground(ui.ColorBright).
 		Background(ui.ColorSecondary).
@@ -298,4 +316,37 @@ func RenderStatBadge(char *game.Character) string {
 	)
 
 	return badgeStyle.Render(badge)
+}
+
+// renderNilCharacterStatBar renders a placeholder message when character is nil.
+// This prevents crashes and provides useful feedback to the user.
+//
+// Parameters:
+//   - width: The available width for rendering
+//
+// Returns:
+//   - string: A styled error message indicating no character is loaded
+func renderNilCharacterStatBar(width int) string {
+	errorStyle := lipgloss.NewStyle().
+		Foreground(ui.ColorError).
+		Bold(true)
+
+	hintStyle := lipgloss.NewStyle().
+		Foreground(ui.ColorDim).
+		Italic(true)
+
+	message := errorStyle.Render("⚠️  No character loaded")
+	hint := hintStyle.Render("Stats unavailable")
+
+	// Center the message if width is large enough
+	if width > 50 {
+		content := message + "\n" + hint
+		return lipgloss.NewStyle().
+			Width(width).
+			Align(lipgloss.Center).
+			Render(content)
+	}
+
+	// Otherwise just return the simple message
+	return message
 }

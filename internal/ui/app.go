@@ -56,6 +56,10 @@ type Model struct {
 	currentScreen Screen   // Which screen is currently displayed
 	keys          *KeyMap  // Key bindings for navigation
 
+	// Quest Board state
+	questBoardSelectedIndex int                  // Currently selected quest index
+	questBoardFilter        screens.QuestFilter  // Current quest filter
+
 	// Terminal dimensions - Updated on window resize
 	width  int // Terminal width in characters
 	height int // Terminal height in characters
@@ -92,6 +96,10 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 		// UI State - Start on dashboard
 		currentScreen: ScreenDashboard,
 		keys:          NewKeyMap(),
+
+		// Quest Board state
+		questBoardSelectedIndex: 0,
+		questBoardFilter:        screens.FilterAll,
 
 		// Dimensions - Will be set on first WindowSizeMsg
 		width:  80,  // Default width
@@ -260,6 +268,11 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Quest Board specific keys
+	if m.currentScreen == ScreenQuestBoard {
+		return m.handleQuestBoardKeys(msg)
+	}
+
 	// Escape key - return to dashboard from any screen
 	if key.Matches(msg, m.keys.Esc) && m.currentScreen != ScreenDashboard {
 		return m.switchScreen(ScreenDashboard)
@@ -282,6 +295,12 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) switchScreen(screen Screen) (tea.Model, tea.Cmd) {
 	m.currentScreen = screen
 
+	// Reset quest board state when switching to it
+	if screen == ScreenQuestBoard {
+		m.questBoardSelectedIndex = 0
+		m.questBoardFilter = screens.FilterAll
+	}
+
 	// Enable/disable dashboard keys based on screen
 	if screen == ScreenDashboard {
 		m.keys.EnableDashboardKeys()
@@ -290,6 +309,83 @@ func (m Model) switchScreen(screen Screen) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handleQuestBoardKeys handles keyboard input specific to the Quest Board screen.
+//
+// Supports:
+//   - Up/Down: Navigate quest list
+//   - Enter: Start/view selected quest (placeholder for now)
+//   - F: Cycle through filters
+//
+// Parameters:
+//   - msg: The key press message
+//
+// Returns:
+//   - tea.Model: Updated model
+//   - tea.Cmd: Optional command
+func (m Model) handleQuestBoardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Filter quests based on current filter to get the correct count
+	filteredQuests := m.getFilteredQuests()
+	maxIndex := len(filteredQuests) - 1
+
+	// Up arrow - select previous quest
+	if key.Matches(msg, m.keys.Up) {
+		if m.questBoardSelectedIndex > 0 {
+			m.questBoardSelectedIndex--
+		}
+		return m, nil
+	}
+
+	// Down arrow - select next quest
+	if key.Matches(msg, m.keys.Down) {
+		if maxIndex >= 0 && m.questBoardSelectedIndex < maxIndex {
+			m.questBoardSelectedIndex++
+		}
+		return m, nil
+	}
+
+	// F key - cycle through filters
+	if msg.String() == "f" || msg.String() == "F" {
+		m.questBoardFilter = (m.questBoardFilter + 1) % 4
+		m.questBoardSelectedIndex = 0 // Reset selection when filter changes
+		return m, nil
+	}
+
+	// Enter key - start/view quest (placeholder)
+	if key.Matches(msg, m.keys.Enter) {
+		// TODO: Implement quest start/view logic
+		// For now, just do nothing
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// getFilteredQuests returns quests filtered by the current filter.
+func (m Model) getFilteredQuests() []*game.Quest {
+	if m.questBoardFilter == screens.FilterAll {
+		return m.quests
+	}
+
+	filtered := make([]*game.Quest, 0)
+	for _, quest := range m.quests {
+		switch m.questBoardFilter {
+		case screens.FilterAvailable:
+			if quest.Status == game.QuestAvailable {
+				filtered = append(filtered, quest)
+			}
+		case screens.FilterActive:
+			if quest.Status == game.QuestActive {
+				filtered = append(filtered, quest)
+			}
+		case screens.FilterCompleted:
+			if quest.Status == game.QuestCompleted {
+				filtered = append(filtered, quest)
+			}
+		}
+	}
+	return filtered
 }
 
 // saveStateCmd returns a command to save current game state to storage.
@@ -338,20 +434,16 @@ func (m Model) viewDashboard() string {
 }
 
 // viewQuestBoard renders the quest board screen.
-// TODO: Subagent 16 will implement full quest board with filtering, sorting, etc.
+// Delegates to screens.RenderQuestBoard for full implementation.
 func (m Model) viewQuestBoard() string {
-	title := RenderTitle("Quest Board", "📋")
-
-	questInfo := fmt.Sprintf(
-		"Total Quests: %d\n\n",
-		len(m.quests),
+	return screens.RenderQuestBoard(
+		m.character,
+		m.quests,
+		m.questBoardSelectedIndex,
+		m.questBoardFilter,
+		m.width,
+		m.height,
 	)
-
-	help := m.keys.RenderQuestBoardHelp()
-
-	content := title + "\n\n" + questInfo + help
-
-	return BoxStyle.Render(content)
 }
 
 // viewCharacter renders the character sheet screen.

@@ -60,6 +60,10 @@ type Model struct {
 	questBoardSelectedIndex int                  // Currently selected quest index
 	questBoardFilter        screens.QuestFilter  // Current quest filter
 
+	// Mentor screen state
+	mentorInputText   string             // Current text in mentor input field
+	mentorConversation []screens.Message // Conversation history with AI mentor
+
 	// Terminal dimensions - Updated on window resize
 	width  int // Terminal width in characters
 	height int // Terminal height in characters
@@ -100,6 +104,10 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 		// Quest Board state
 		questBoardSelectedIndex: 0,
 		questBoardFilter:        screens.FilterAll,
+
+		// Mentor screen state
+		mentorInputText:    "",
+		mentorConversation: []screens.Message{},
 
 		// Dimensions - Will be set on first WindowSizeMsg
 		width:  80,  // Default width
@@ -480,21 +488,15 @@ func (m Model) viewCharacter() string {
 }
 
 // viewMentor renders the mentor/AI assistant screen.
-// TODO: Subagent 18 will implement full mentor screen with chat interface.
+// Delegates to screens.RenderMentor for full implementation.
 func (m Model) viewMentor() string {
-	title := RenderTitle("AI Mentor", "🧙")
-
-	mentorInfo := "AI Mentor is coming soon!\n\n" +
-		"This screen will provide:\n" +
-		"- Quest guidance and hints\n" +
-		"- Coding tips and best practices\n" +
-		"- Progress insights\n\n"
-
-	help := m.keys.RenderMentorHelp()
-
-	content := title + "\n\n" + mentorInfo + help
-
-	return BoxStyle.Render(content)
+	return screens.RenderMentor(
+		m.character,
+		m.mentorInputText,
+		m.mentorConversation,
+		m.width,
+		m.height,
+	)
 }
 
 // viewSettings renders the settings screen.

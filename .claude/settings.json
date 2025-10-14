@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "web_search",
+      "web_fetch",
+      "create_file",
+      "str_replace",
+      "view",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git log:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(pwd:*)",
+      "Bash(tree:*)",
+      "Bash(go get:*)",
+      "Bash(go test:*)",
+      "Bash(make:*)"
+    ],
+    "deny": [
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(sudo:*)",
+      "Bash(apt:*)",
+      "Bash(apt-get:*)",
+      "Bash(pip:*)",
+      "Bash(npm:*)",
+      "Bash(docker:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(mv:*)"
+    ]
+  }
+}

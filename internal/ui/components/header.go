@@ -9,7 +9,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/AutumnsGrove/codequest/internal/game"
-	"github.com/AutumnsGrove/codequest/internal/ui"
+)
+
+// Color constants (copied from ui package to avoid import cycle)
+var (
+	colorPrimary = lipgloss.Color("205") // Pink/Magenta
+	colorAccent  = lipgloss.Color("86")  // Cyan
+	colorLevel   = lipgloss.Color("93")  // Yellow-Orange
+	colorBright  = lipgloss.Color("15")  // White
+	colorDim     = lipgloss.Color("240") // Gray
 )
 
 // RenderHeader creates a consistent header for all screens.
@@ -59,7 +67,7 @@ func renderLeftSection() string {
 
 	style := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(ui.ColorPrimary)
+		Foreground(colorPrimary)
 
 	return style.Render(icon + " " + title)
 }
@@ -73,7 +81,7 @@ func renderLeftSection() string {
 //   - string: Styled "[Screen Name]" text
 func renderCenterSection(screenName string) string {
 	style := lipgloss.NewStyle().
-		Foreground(ui.ColorAccent).
+		Foreground(colorAccent).
 		Bold(true)
 
 	return style.Render("[" + screenName + "]")
@@ -90,19 +98,19 @@ func renderRightSection(char *game.Character) string {
 	if char == nil {
 		// No character loaded yet
 		style := lipgloss.NewStyle().
-			Foreground(ui.ColorDim).
+			Foreground(colorDim).
 			Italic(true)
 		return style.Render("No Character")
 	}
 
 	// Character name style
 	nameStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorBright).
+		Foreground(colorBright).
 		Bold(true)
 
 	// Level indicator style
 	levelStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorLevel).
+		Foreground(colorLevel).
 		Bold(true)
 
 	name := nameStyle.Render(char.Name)
@@ -172,7 +180,7 @@ func joinHeaderSections(left, center, right string, width int) string {
 func wrapHeader(content string, width int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), false, false, true, false). // Bottom border only
-		BorderForeground(ui.ColorAccent).
+		BorderForeground(colorAccent).
 		Width(width - 4). // Account for padding
 		Padding(0, 1).
 		MarginBottom(1)
@@ -191,10 +199,10 @@ func wrapHeader(content string, width int) string {
 //   - string: A minimal header with just the screen name
 func renderMinimalHeader(screenName string, width int) string {
 	style := lipgloss.NewStyle().
-		Foreground(ui.ColorPrimary).
+		Foreground(colorPrimary).
 		Bold(true).
 		Border(lipgloss.RoundedBorder(), false, false, true, false).
-		BorderForeground(ui.ColorAccent).
+		BorderForeground(colorAccent).
 		Width(width - 4).
 		Padding(0, 1).
 		MarginBottom(1)

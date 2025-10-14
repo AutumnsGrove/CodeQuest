@@ -11,6 +11,7 @@ import (
 
 	"github.com/AutumnsGrove/codequest/internal/game"
 	"github.com/AutumnsGrove/codequest/internal/storage"
+	"github.com/AutumnsGrove/codequest/internal/ui/screens"
 )
 
 // Screen represents different application screens/views.
@@ -331,29 +332,9 @@ func (m Model) viewError() string {
 }
 
 // viewDashboard renders the dashboard screen.
-// TODO: Subagent 15 will implement full dashboard with character stats, quests, etc.
+// Delegates to screens.RenderDashboard for full implementation.
 func (m Model) viewDashboard() string {
-	title := RenderTitle("CodeQuest Dashboard", "🎮")
-
-	// Show character info if available
-	var charInfo string
-	if m.character != nil {
-		charInfo = fmt.Sprintf(
-			"Welcome back, %s!\n\n%s  %s\n\n",
-			BoldTextStyle.Render(m.character.Name),
-			RenderStat("Level", fmt.Sprintf("%d", m.character.Level)),
-			RenderStat("XP", fmt.Sprintf("%d/%d", m.character.XP, m.character.XPToNextLevel)),
-		)
-	} else {
-		charInfo = "No character loaded. Press Ctrl+C to quit and restart.\n\n"
-	}
-
-	// Help text
-	help := m.keys.RenderDashboardHelp()
-
-	content := title + "\n\n" + charInfo + help
-
-	return BoxStyle.Render(content)
+	return screens.RenderDashboard(m.character, m.quests, m.width, m.height)
 }
 
 // viewQuestBoard renders the quest board screen.

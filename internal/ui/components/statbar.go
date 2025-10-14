@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/AutumnsGrove/codequest/internal/game"
 	"github.com/AutumnsGrove/codequest/internal/ui"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // StatBarConfig holds configuration options for the stat bar rendering

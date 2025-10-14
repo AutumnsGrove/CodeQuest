@@ -56,7 +56,7 @@ help:
 ## init: Initialize the Go module and download dependencies
 init:
 	@echo "$(GREEN)Initializing Go module...$(NC)"
-	$(GOMOD) init github.com/yourusername/codequest || true
+	$(GOMOD) init github.com/AutumnsGrove/codequest || true
 	$(GOMOD) tidy
 	@echo "$(GREEN)Module initialized!$(NC)"
 

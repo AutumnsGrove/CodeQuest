@@ -22,8 +22,8 @@ go.work
 /dist/
 /bin/
 
-# Binary name
-codequest
+# Binary name (only in root directory)
+/codequest
 
 # IDE specific files
 .idea/

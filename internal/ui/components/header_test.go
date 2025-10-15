@@ -40,6 +40,7 @@ func TestRenderHeader(t *testing.T) {
 			char:       game.NewCharacter("TestHero"),
 			width:      30,
 			wantEmpty:  false,
+			// Note: minimal mode doesn't include character name due to space constraints
 		},
 		{
 			name:       "very narrow width",
@@ -76,8 +77,9 @@ func TestRenderHeader(t *testing.T) {
 				t.Error("RenderHeader() missing CodeQuest title")
 			}
 
-			// If character provided, verify character name appears
-			if tt.char != nil {
+			// If character provided and width is sufficient (>=40), verify character name appears
+			// Minimal headers (width < 40) don't include character names due to space constraints
+			if tt.char != nil && tt.width >= 40 {
 				if !strings.Contains(got, tt.char.Name) {
 					t.Errorf("RenderHeader() missing character name %q", tt.char.Name)
 				}

@@ -196,7 +196,7 @@ func wrapHeader(content string, width int) string {
 //   - width: The available width
 //
 // Returns:
-//   - string: A minimal header with just the screen name
+//   - string: A minimal header with CodeQuest and screen name
 func renderMinimalHeader(screenName string, width int) string {
 	style := lipgloss.NewStyle().
 		Foreground(colorPrimary).
@@ -207,5 +207,6 @@ func renderMinimalHeader(screenName string, width int) string {
 		Padding(0, 1).
 		MarginBottom(1)
 
-	return style.Render("🎮 " + screenName)
+	// Include "CodeQuest" in minimal header for consistency
+	return style.Render("🎮 CodeQuest - " + screenName)
 }

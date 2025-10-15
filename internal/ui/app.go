@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/AutumnsGrove/codequest/internal/game"
@@ -74,6 +75,9 @@ type Model struct {
 
 	// Timer state - Session timer (stub for now)
 	timerRunning bool // Whether the session timer is active
+
+	// Help overlay state
+	showingHelp bool // Whether the help overlay is currently displayed
 }
 
 // NewModel creates and initializes a new application model.
@@ -119,6 +123,9 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 
 		// Timer
 		timerRunning: false,
+
+		// Help overlay
+		showingHelp: false,
 	}
 }
 
@@ -203,28 +210,37 @@ func (m Model) View() string {
 		return m.viewError()
 	}
 
-	// Route to appropriate screen based on currentScreen
+	// Get the main screen content
+	var mainContent string
 	switch m.currentScreen {
 	case ScreenDashboard:
-		return m.viewDashboard()
+		mainContent = m.viewDashboard()
 	case ScreenQuestBoard:
-		return m.viewQuestBoard()
+		mainContent = m.viewQuestBoard()
 	case ScreenCharacter:
-		return m.viewCharacter()
+		mainContent = m.viewCharacter()
 	case ScreenMentor:
-		return m.viewMentor()
+		mainContent = m.viewMentor()
 	case ScreenSettings:
-		return m.viewSettings()
+		mainContent = m.viewSettings()
 	default:
-		return "Unknown screen"
+		mainContent = "Unknown screen"
 	}
+
+	// If help overlay is showing, render it on top
+	if m.showingHelp {
+		return m.viewHelpOverlay(mainContent)
+	}
+
+	return mainContent
 }
 
 // handleKeyPress handles keyboard input and routes to appropriate handlers.
 //
 // Priority order:
-//  1. Global keys (Ctrl+C quit, Alt+ modifiers)
-//  2. Screen-specific keys (Q, C, M, S on dashboard)
+//  1. Help overlay (if showing, Esc to close)
+//  2. Global keys (Ctrl+C quit, ? for help, Alt+ modifiers)
+//  3. Screen-specific keys (Q, C, M, S on dashboard)
 //
 // Parameters:
 //   - msg: The key press message
@@ -233,9 +249,25 @@ func (m Model) View() string {
 //   - tea.Model: Updated model
 //   - tea.Cmd: Optional command
 func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// If help overlay is showing, only handle Esc to close it
+	if m.showingHelp {
+		if key.Matches(msg, m.keys.Esc) {
+			m.showingHelp = false
+			return m, nil
+		}
+		// Ignore all other keys when help is showing
+		return m, nil
+	}
+
 	// Global quit (Ctrl+C)
 	if key.Matches(msg, m.keys.GlobalQuit) {
 		return m, tea.Quit
+	}
+
+	// Global help overlay (? key) - works from any screen except dashboard (dashboard uses ? for help)
+	if m.currentScreen != ScreenDashboard && key.Matches(msg, m.keys.HelpOverlay) {
+		m.showingHelp = true
+		return m, nil
 	}
 
 	// Global save (Ctrl+S)
@@ -455,36 +487,9 @@ func (m Model) viewQuestBoard() string {
 }
 
 // viewCharacter renders the character sheet screen.
-// TODO: Subagent 17 will implement full character sheet with stats, history, etc.
+// Delegates to screens.RenderCharacter for full implementation.
 func (m Model) viewCharacter() string {
-	title := RenderTitle("Character Sheet", "⚔️")
-
-	var charInfo string
-	if m.character != nil {
-		charInfo = fmt.Sprintf(
-			"Name: %s\n"+
-				"Level: %d\n"+
-				"XP: %d/%d\n"+
-				"Code Power: %d\n"+
-				"Wisdom: %d\n"+
-				"Agility: %d\n\n",
-			m.character.Name,
-			m.character.Level,
-			m.character.XP,
-			m.character.XPToNextLevel,
-			m.character.CodePower,
-			m.character.Wisdom,
-			m.character.Agility,
-		)
-	} else {
-		charInfo = "No character loaded.\n\n"
-	}
-
-	help := m.keys.RenderCharacterHelp()
-
-	content := title + "\n\n" + charInfo + help
-
-	return BoxStyle.Render(content)
+	return screens.RenderCharacter(m.character, m.width, m.height)
 }
 
 // viewMentor renders the mentor/AI assistant screen.
@@ -500,21 +505,63 @@ func (m Model) viewMentor() string {
 }
 
 // viewSettings renders the settings screen.
-// TODO: Subagent 19 will implement full settings screen with configuration options.
+// Delegates to screens.RenderSettings for full implementation.
 func (m Model) viewSettings() string {
-	title := RenderTitle("Settings", "⚙️")
+	return screens.RenderSettings(m.character, m.width, m.height)
+}
 
-	settingsInfo := "Settings screen coming soon!\n\n" +
-		"Configure:\n" +
-		"- AI provider preferences\n" +
-		"- Notification settings\n" +
-		"- Theme and display options\n\n"
+// viewHelpOverlay renders the help overlay on top of the main content.
+// The overlay shows all available keyboard shortcuts for the current screen.
+func (m Model) viewHelpOverlay(mainContent string) string {
+	// Create help content based on current screen
+	var helpTitle string
+	var helpBindings []key.Binding
 
-	help := m.keys.RenderSettingsHelp()
+	switch m.currentScreen {
+	case ScreenDashboard:
+		helpTitle = "Dashboard Help"
+		helpBindings = m.keys.DashboardHelp()
+	case ScreenQuestBoard:
+		helpTitle = "Quest Board Help"
+		helpBindings = m.keys.QuestBoardHelp()
+	case ScreenCharacter:
+		helpTitle = "Character Sheet Help"
+		helpBindings = m.keys.CharacterHelp()
+	case ScreenMentor:
+		helpTitle = "Mentor Help"
+		helpBindings = m.keys.MentorHelp()
+	case ScreenSettings:
+		helpTitle = "Settings Help"
+		helpBindings = m.keys.SettingsHelp()
+	default:
+		helpTitle = "Help"
+		helpBindings = m.keys.ShortHelp()
+	}
 
-	content := title + "\n\n" + settingsInfo + help
+	// Build help text from bindings
+	helpLines := make([]string, 0)
+	helpLines = append(helpLines, TitleStyle.Render(helpTitle))
+	helpLines = append(helpLines, "")
 
-	return BoxStyle.Render(content)
+	for _, binding := range helpBindings {
+		keys := binding.Help().Key
+		desc := binding.Help().Desc
+		line := RenderKeybind(keys, desc)
+		helpLines = append(helpLines, line)
+	}
+
+	helpLines = append(helpLines, "")
+	helpLines = append(helpLines, MutedTextStyle.Render("Press Esc to close this help overlay"))
+
+	helpContent := lipgloss.JoinVertical(lipgloss.Left, helpLines...)
+
+	// Wrap in modal style
+	helpBox := ModalStyle.Render(helpContent)
+
+	// Center the help box over the main content
+	overlay := PlaceInCenter(m.width, m.height, helpBox)
+
+	return overlay
 }
 
 // ============================================================================

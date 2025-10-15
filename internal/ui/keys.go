@@ -28,6 +28,9 @@ type KeyMap struct {
 	DashboardSettings  key.Binding
 	DashboardHelpKey   key.Binding
 
+	// Help overlay key (works from any screen)
+	HelpOverlay key.Binding
+
 	// Global shortcuts (modifiers required - safe in input mode)
 	GlobalDashboard key.Binding
 	GlobalMentor    key.Binding
@@ -108,6 +111,12 @@ func NewKeyMap() *KeyMap {
 		DashboardHelpKey: key.NewBinding(
 			key.WithKeys("h", "H", "?"),
 			key.WithHelp("H/?", "help"),
+		),
+
+		// Help overlay key (works from any screen)
+		HelpOverlay: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "show help"),
 		),
 
 		// Global shortcuts (modifiers required - safe everywhere)

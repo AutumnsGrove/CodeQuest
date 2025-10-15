@@ -127,7 +127,7 @@ var (
 // This is the primary screen players see, showing character overview, active quest, and quick actions.
 //
 // The dashboard layout is responsive and adapts to terminal dimensions:
-//   - Wide terminals (>100 cols): Side-by-side panels
+//   - Wide terminals (>100 cols): Side-by-side panels with timer
 //   - Narrow terminals (≤100 cols): Stacked vertical layout
 //
 // Parameters:
@@ -138,6 +138,9 @@ var (
 //
 // Returns:
 //   - string: Rendered dashboard UI
+//
+// Note: The timer display is currently a placeholder showing character's TodaySessionTime.
+// Full timer state management will be added by Subagent 32.
 func RenderDashboard(character *game.Character, quests []*game.Quest, width, height int) string {
 	// Handle nil character gracefully
 	if character == nil {
@@ -162,7 +165,7 @@ func renderDashboardWide(character *game.Character, quests []*game.Quest, width,
 	// Render left panel: Character overview and stats
 	leftPanel := renderCharacterPanel(character, leftWidth)
 
-	// Render right panel: Active quest and today's stats
+	// Render right panel: Active quest, today's stats, and timer
 	activeQuest := findActiveQuest(quests)
 	rightPanel := renderActivityPanel(character, activeQuest, rightWidth)
 
@@ -173,6 +176,9 @@ func renderDashboardWide(character *game.Character, quests []*game.Quest, width,
 		rightPanel,
 	)
 
+	// Render timer section (inline display)
+	timerSection := renderTimerSection(character)
+
 	// Render quick actions menu at bottom
 	quickActions := renderQuickActions(width)
 
@@ -180,6 +186,8 @@ func renderDashboardWide(character *game.Character, quests []*game.Quest, width,
 	dashboard := lipgloss.JoinVertical(
 		lipgloss.Left,
 		panels,
+		"",
+		timerSection,
 		"",
 		quickActions,
 	)
@@ -196,6 +204,7 @@ func renderDashboardNarrow(character *game.Character, quests []*game.Quest, widt
 	charPanel := renderCharacterPanel(character, panelWidth)
 	activeQuest := findActiveQuest(quests)
 	activityPanel := renderActivityPanel(character, activeQuest, panelWidth)
+	timerSection := renderTimerSection(character)
 	quickActions := renderQuickActions(width)
 
 	// Stack all panels
@@ -204,6 +213,8 @@ func renderDashboardNarrow(character *game.Character, quests []*game.Quest, widt
 		charPanel,
 		"",
 		activityPanel,
+		"",
+		timerSection,
 		"",
 		quickActions,
 	)
@@ -462,6 +473,58 @@ func renderTodayActivity(character *game.Character, width int) string {
 	)
 
 	return BoxStyle.Width(width - 4).Render(content)
+}
+
+// renderTimerSection renders the session timer display (inline to avoid import cycle).
+// This shows the current coding session time.
+//
+// Note: Currently displays character's TodaySessionTime as a static value.
+// Full timer state management (start/stop/tick) will be added by Subagent 32.
+func renderTimerSection(character *game.Character) string {
+	if character == nil {
+		return ""
+	}
+
+	// Format the duration inline (avoiding import cycle with components)
+	duration := character.TodaySessionTime
+	hours := int(duration.Hours())
+	minutes := int(duration.Minutes()) % 60
+	seconds := int(duration.Seconds()) % 60
+	timeStr := fmt.Sprintf("%d:%02d:%02d", hours, minutes, seconds)
+
+	// Color coding based on duration
+	var color lipgloss.Color
+	hoursDur := duration.Hours()
+	switch {
+	case hoursDur >= 5.0:
+		color = ColorWarning // Orange
+	case hoursDur >= 3.0:
+		color = ColorSuccess // Green
+	case hoursDur >= 1.0:
+		color = ColorInfo // Cyan
+	default:
+		color = ColorDim // Gray
+	}
+
+	// Timer display with icon (paused for now)
+	timerStyle := lipgloss.NewStyle().
+		Foreground(color).
+		Bold(true)
+	icon := "⏸" // Pause symbol (not running yet)
+	timerDisplay := timerStyle.Render(icon + " " + timeStr)
+
+	// Create a small badge-style display
+	label := StatLabelStyle.Render("Session: ")
+	hint := MutedTextStyle.Render(" (Press Ctrl+T to start/stop timer)")
+
+	content := label + timerDisplay + hint
+
+	// Center the timer section
+	centered := lipgloss.NewStyle().
+		Align(lipgloss.Center).
+		Render(content)
+
+	return centered
 }
 
 // renderQuickActions renders the quick actions menu at the bottom of dashboard.

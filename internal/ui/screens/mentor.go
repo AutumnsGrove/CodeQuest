@@ -3,20 +3,28 @@
 package screens
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/AutumnsGrove/codequest/internal/ai"
 	"github.com/AutumnsGrove/codequest/internal/game"
 )
 
 // Message represents a single message in the conversation history.
 // Used to track conversation between user and AI mentor.
 type Message struct {
-	Sender    string    // "user", "crush", "mods", "claude", "system"
+	Role      string    // "user" or "assistant"
 	Content   string    // Message text
+	Provider  string    // Which AI answered (for assistant messages), empty for user
 	Timestamp time.Time // When sent
 }
 
@@ -25,6 +33,353 @@ type AIProviderStatus struct {
 	Primary   string // Primary provider name (e.g., "Crush")
 	Available bool   // Whether any provider is available
 	Fallback  string // Fallback provider if primary unavailable
+}
+
+// MentorScreen represents the AI mentor screen state and components.
+// This struct manages the interactive chat interface with AI providers.
+type MentorScreen struct {
+	aiManager *ai.AIManager   // AI manager for provider fallback
+	messages  []Message       // Conversation history
+	input     textinput.Model // Text input component
+	viewport  viewport.Model  // Scrollable message history
+	loading   bool            // True while waiting for AI response
+	width     int             // Terminal width
+	height    int             // Terminal height
+}
+
+// NewMentorScreen creates a new mentor screen with initialized components.
+func NewMentorScreen(aiManager *ai.AIManager, width, height int) *MentorScreen {
+	// Create text input component
+	ti := textinput.New()
+	ti.Placeholder = "Ask anything about your code..."
+	ti.Focus()
+	ti.CharLimit = 500
+	ti.Width = width - 10
+
+	// Create viewport for message history
+	vp := viewport.New(width-4, height-20)
+	vp.SetContent("")
+
+	return &MentorScreen{
+		aiManager: aiManager,
+		messages:  []Message{},
+		input:     ti,
+		viewport:  vp,
+		loading:   false,
+		width:     width,
+		height:    height,
+	}
+}
+
+// SetAIManager updates the AI manager (useful for hot-swapping).
+func (m *MentorScreen) SetAIManager(aiManager *ai.AIManager) {
+	m.aiManager = aiManager
+}
+
+// SetSize updates the screen dimensions and resizes components.
+func (m *MentorScreen) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+	m.input.Width = width - 10
+	m.viewport.Width = width - 4
+	m.viewport.Height = height - 20
+}
+
+// Update handles Bubble Tea messages for the mentor screen.
+func (m *MentorScreen) Update(msg tea.Msg) (*MentorScreen, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		// Don't handle input if loading
+		if m.loading {
+			return m, nil
+		}
+
+		// Handle Enter key to send message
+		if msg.Type == tea.KeyEnter {
+			question := m.input.Value()
+			if question == "" {
+				return m, nil
+			}
+
+			// Add user message to history
+			m.messages = append(m.messages, Message{
+				Role:      "user",
+				Content:   question,
+				Provider:  "",
+				Timestamp: time.Now(),
+			})
+
+			// Clear input and set loading state
+			m.input.SetValue("")
+			m.loading = true
+
+			// Ask AI asynchronously
+			return m, m.askAI(question)
+		}
+
+		// Pass other keys to input component
+		m.input, cmd = m.input.Update(msg)
+		return m, cmd
+
+	case aiResponseMsg:
+		// Clear loading state
+		m.loading = false
+
+		if msg.err != nil {
+			// Show error message
+			m.messages = append(m.messages, Message{
+				Role:      "system",
+				Content:   formatErrorMessage(msg.err),
+				Provider:  "",
+				Timestamp: time.Now(),
+			})
+			return m, m.saveHistory()
+		}
+
+		// Add AI response to history
+		m.messages = append(m.messages, Message{
+			Role:      "assistant",
+			Content:   msg.content,
+			Provider:  msg.provider,
+			Timestamp: time.Now(),
+		})
+
+		// Save chat history to storage
+		return m, m.saveHistory()
+
+	case historySavedMsg:
+		// History saved successfully, no action needed
+		return m, nil
+
+	case historyLoadedMsg:
+		// Chat history loaded from storage
+		m.messages = msg.messages
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// aiResponseMsg is a Bubble Tea message for AI responses.
+type aiResponseMsg struct {
+	content  string
+	provider string
+	err      error
+}
+
+// historySavedMsg is sent when chat history is saved successfully.
+type historySavedMsg struct{}
+
+// historyLoadedMsg is sent when chat history is loaded from storage.
+type historyLoadedMsg struct {
+	messages []Message
+}
+
+// askAI sends a question to the AI manager and returns a command.
+// This runs asynchronously to keep the UI responsive.
+func (m *MentorScreen) askAI(question string) tea.Cmd {
+	return func() tea.Msg {
+		// Create context with timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		// Build AI request
+		req := &ai.Request{
+			Prompt:      question,
+			MaxTokens:   800,
+			Temperature: 0.7,
+			Complexity:  detectComplexity(question),
+		}
+
+		// Ask via AIManager (uses fallback chain)
+		resp, err := m.aiManager.Ask(ctx, req)
+		if err != nil {
+			return aiResponseMsg{err: err}
+		}
+
+		return aiResponseMsg{
+			content:  resp.Content,
+			provider: resp.Provider,
+		}
+	}
+}
+
+// detectComplexity analyzes the question to determine complexity hint.
+// Returns "simple" for quick questions, "complex" for detailed analysis.
+func detectComplexity(question string) string {
+	// Simple heuristic: short questions are usually simple
+	if len(question) < 50 {
+		return "simple"
+	}
+
+	// Check for complex keywords
+	complexKeywords := []string{
+		"explain", "analyze", "debug", "optimize", "refactor",
+		"architecture", "design pattern", "performance",
+	}
+
+	lowerQuestion := strings.ToLower(question)
+	for _, keyword := range complexKeywords {
+		if strings.Contains(lowerQuestion, keyword) {
+			return "complex"
+		}
+	}
+
+	return "simple"
+}
+
+// formatErrorMessage creates a user-friendly error message.
+func formatErrorMessage(err error) string {
+	// Network errors
+	if strings.Contains(err.Error(), ai.ErrNoProvidersAvailable.Error()) {
+		return "No AI providers are available. Check your internet connection or API keys."
+	}
+
+	// Rate limiting
+	if strings.Contains(err.Error(), ai.ErrRateLimited.Error()) {
+		return "Rate limit exceeded. Please wait a moment and try again."
+	}
+
+	// Timeout
+	if strings.Contains(err.Error(), ai.ErrProviderTimeout.Error()) {
+		return "Request timed out. Please try again or ask a simpler question."
+	}
+
+	// Generic error
+	return fmt.Sprintf("Error: %v", err)
+}
+
+// saveHistory saves the chat history to storage via Skate.
+func (m *MentorScreen) saveHistory() tea.Cmd {
+	return func() tea.Msg {
+		// Convert messages to JSON
+		data, err := json.Marshal(m.messages)
+		if err != nil {
+			return aiResponseMsg{err: fmt.Errorf("marshaling chat history: %w", err)}
+		}
+
+		// Save via Skate
+		cmd := exec.Command("skate", "set", "codequest_chat_history", string(data))
+		if err := cmd.Run(); err != nil {
+			return aiResponseMsg{err: fmt.Errorf("saving chat history: %w", err)}
+		}
+
+		return historySavedMsg{}
+	}
+}
+
+// LoadChatHistory loads chat history from storage.
+// Returns a command that sends historyLoadedMsg when complete.
+func LoadChatHistory() tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("skate", "get", "codequest_chat_history")
+		output, err := cmd.Output()
+		if err != nil {
+			// No history found or error - return empty history
+			return historyLoadedMsg{messages: []Message{}}
+		}
+
+		var messages []Message
+		if err := json.Unmarshal(output, &messages); err != nil {
+			// Invalid JSON - return empty history
+			return historyLoadedMsg{messages: []Message{}}
+		}
+
+		return historyLoadedMsg{messages: messages}
+	}
+}
+
+// View renders the mentor screen.
+func (m *MentorScreen) View() string {
+	// Render message history in viewport
+	var historyLines []string
+
+	for _, msg := range m.messages {
+		rendered := m.renderMessage(msg)
+		historyLines = append(historyLines, rendered)
+		historyLines = append(historyLines, "") // Spacing
+	}
+
+	if len(historyLines) > 0 {
+		m.viewport.SetContent(strings.Join(historyLines, "\n"))
+	}
+
+	// Build input view
+	inputView := m.input.View()
+	if m.loading {
+		loadingStyle := lipgloss.NewStyle().Foreground(ColorInfo).Bold(true)
+		inputView = loadingStyle.Render("⏳ Thinking...") + "\n" + inputView
+	}
+
+	// Build provider status
+	providerStatus := m.renderProviderStatus()
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.viewport.View(),
+		"",
+		inputView,
+		"",
+		providerStatus,
+	)
+}
+
+// renderMessage renders a single message based on role.
+func (m *MentorScreen) renderMessage(msg Message) string {
+	timestamp := formatTime(msg.Timestamp)
+
+	switch msg.Role {
+	case "user":
+		return renderUserMessage(msg.Content, timestamp, m.width-8)
+	case "assistant":
+		return renderAIMessage(msg.Provider, msg.Content, timestamp, m.width-8)
+	case "system":
+		return renderSystemMessage(msg.Content, timestamp, m.width-8)
+	default:
+		return renderSystemMessage(msg.Content, timestamp, m.width-8)
+	}
+}
+
+// renderProviderStatus renders the AI provider status bar.
+func (m *MentorScreen) renderProviderStatus() string {
+	if m.aiManager == nil {
+		return DimTextStyle.Render("AI providers not initialized")
+	}
+
+	providers := m.aiManager.GetAvailableProviders()
+
+	var statusParts []string
+	availableStyle := lipgloss.NewStyle().Foreground(ColorSuccess)
+	unavailableStyle := lipgloss.NewStyle().Foreground(ColorDim)
+
+	// Show all known providers
+	allProviders := []string{"Crush", "Mods", "Claude"}
+	for _, name := range allProviders {
+		available := false
+		for _, p := range providers {
+			if p == name {
+				available = true
+				break
+			}
+		}
+
+		var style lipgloss.Style
+		var icon string
+		if available {
+			style = availableStyle
+			icon = "●"
+		} else {
+			style = unavailableStyle
+			icon = "○"
+		}
+
+		statusParts = append(statusParts, style.Render(icon+" "+name))
+	}
+
+	label := lipgloss.NewStyle().Foreground(ColorMuted).Render("Providers: ")
+	return label + strings.Join(statusParts, " | ")
 }
 
 // RenderMentor renders the mentor screen with conversation history and input field.
@@ -59,7 +414,7 @@ type AIProviderStatus struct {
 //   - string: Rendered mentor screen UI
 func RenderMentor(character *game.Character, inputText string, conversation []Message, width, height int) string {
 	// Render header
-	header := renderMentorHeader(character, width)
+	header := RenderMentorHeader(character, width)
 
 	// Render AI provider status
 	status := renderAIStatus(getAIProviderStatus(), width)
@@ -76,7 +431,7 @@ func RenderMentor(character *game.Character, inputText string, conversation []Me
 	inputArea := renderInputArea(inputText, width)
 
 	// Render footer with key bindings
-	footer := renderMentorFooter(width)
+	footer := RenderMentorFooter(width)
 
 	// Assemble screen
 	screen := lipgloss.JoinVertical(
@@ -94,9 +449,10 @@ func RenderMentor(character *game.Character, inputText string, conversation []Me
 	return screen
 }
 
-// renderMentorHeader creates a header for the Mentor screen.
+// RenderMentorHeader creates a header for the Mentor screen.
 // Similar to Quest Board header but with Mentor branding.
-func renderMentorHeader(char *game.Character, width int) string {
+// Exported for use by app.go.
+func RenderMentorHeader(char *game.Character, width int) string {
 	// Colors for header
 	colorPrimary := lipgloss.Color("205") // Pink/Magenta
 	colorAccent := lipgloss.Color("86")   // Cyan
@@ -244,7 +600,7 @@ func renderConversation(messages []Message, width, maxHeight int) string {
 	messageStrings := make([]string, 0)
 	for i := startIdx; i < len(messages); i++ {
 		msg := messages[i]
-		rendered := renderMessage(msg, width-8)
+		rendered := renderMessageStatic(msg, width-8)
 		messageStrings = append(messageStrings, rendered)
 	}
 
@@ -262,15 +618,20 @@ func renderConversation(messages []Message, width, maxHeight int) string {
 	return BoxStyle.Width(width - 4).Render(boxContent)
 }
 
-// renderMessage renders a single message based on sender type.
-func renderMessage(msg Message, maxWidth int) string {
+// renderMessageStatic renders a single message based on role (static version for RenderMentor).
+// This is used by the legacy RenderMentor function.
+func renderMessageStatic(msg Message, maxWidth int) string {
 	timestamp := formatTime(msg.Timestamp)
 
-	switch msg.Sender {
+	switch msg.Role {
 	case "user":
 		return renderUserMessage(msg.Content, timestamp, maxWidth)
-	case "crush", "mods", "claude":
-		return renderAIMessage(msg.Sender, msg.Content, timestamp, maxWidth)
+	case "assistant":
+		providerName := msg.Provider
+		if providerName == "" {
+			providerName = "Mentor"
+		}
+		return renderAIMessage(providerName, msg.Content, timestamp, maxWidth)
 	case "system":
 		return renderSystemMessage(msg.Content, timestamp, maxWidth)
 	default:
@@ -471,8 +832,9 @@ func renderInputArea(inputText string, width int) string {
 	return content
 }
 
-// renderMentorFooter renders the footer with key bindings.
-func renderMentorFooter(width int) string {
+// RenderMentorFooter renders the footer with key bindings.
+// Exported for use by app.go.
+func RenderMentorFooter(width int) string {
 	// Key bindings
 	enterKey := renderKeybind("Enter", "Send Message")
 	escKey := renderKeybind("Esc", "Back")

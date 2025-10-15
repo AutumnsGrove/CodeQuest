@@ -11,6 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/AutumnsGrove/codequest/internal/ai"
+	"github.com/AutumnsGrove/codequest/internal/config"
 	"github.com/AutumnsGrove/codequest/internal/game"
 	"github.com/AutumnsGrove/codequest/internal/storage"
 	"github.com/AutumnsGrove/codequest/internal/ui/screens"
@@ -54,6 +56,11 @@ type Model struct {
 	// Storage - Data persistence
 	storage *storage.SkateClient // Skate KV store client
 
+	// AI Integration
+	aiManager    *ai.AIManager         // AI provider manager
+	config       *config.Config        // Application configuration
+	mentorScreen *screens.MentorScreen // Mentor screen component
+
 	// UI State - Current view and controls
 	currentScreen Screen   // Which screen is currently displayed
 	keys          *KeyMap  // Key bindings for navigation
@@ -61,10 +68,6 @@ type Model struct {
 	// Quest Board state
 	questBoardSelectedIndex int                  // Currently selected quest index
 	questBoardFilter        screens.QuestFilter  // Current quest filter
-
-	// Mentor screen state
-	mentorInputText   string             // Current text in mentor input field
-	mentorConversation []screens.Message // Conversation history with AI mentor
 
 	// Terminal dimensions - Updated on window resize
 	width  int // Terminal width in characters
@@ -90,13 +93,23 @@ type Model struct {
 //
 // Parameters:
 //   - storageClient: Skate storage client for save/load operations (required)
+//   - cfg: Application configuration (required)
 //
 // Returns:
 //   - *Model: A new Model instance ready for Bubble Tea initialization
 //
 // The model starts on the Dashboard screen with loading state active.
 // Init() will attempt to load saved data from storage.
-func NewModel(storageClient *storage.SkateClient) *Model {
+func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
+	// Initialize AI Manager with providers
+	aiManager := initializeAIManager(cfg)
+
+	// Create mentor screen (will be initialized properly in Init)
+	var mentorScreen *screens.MentorScreen
+	if aiManager != nil {
+		mentorScreen = screens.NewMentorScreen(aiManager, 80, 24)
+	}
+
 	return &Model{
 		// Game State - Will be loaded in Init()
 		character: nil,
@@ -106,6 +119,11 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 		// Storage
 		storage: storageClient,
 
+		// AI Integration
+		aiManager:    aiManager,
+		config:       cfg,
+		mentorScreen: mentorScreen,
+
 		// UI State - Start on dashboard
 		currentScreen: ScreenDashboard,
 		keys:          NewKeyMap(),
@@ -113,10 +131,6 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 		// Quest Board state
 		questBoardSelectedIndex: 0,
 		questBoardFilter:        screens.FilterAll,
-
-		// Mentor screen state
-		mentorInputText:    "",
-		mentorConversation: []screens.Message{},
 
 		// Dimensions - Will be set on first WindowSizeMsg
 		width:  80,  // Default width
@@ -138,6 +152,31 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 	}
 }
 
+// initializeAIManager creates and configures the AI manager with all providers.
+// Returns nil if AI initialization fails (non-fatal).
+func initializeAIManager(cfg *config.Config) *ai.AIManager {
+	// Create AIManager
+	manager := ai.NewAIManager(cfg)
+
+	// TODO: Load API keys from Skate or environment
+	// For now, we'll check environment variables
+	// crushAPIKey := os.Getenv("OPENROUTER_API_KEY")
+	// if crushAPIKey != "" {
+	// 	crushProvider := ai.NewCrushProvider(crushAPIKey, &cfg.AI)
+	// 	manager.RegisterProvider(crushProvider)
+	// }
+
+	// TODO: Initialize Mods provider (local models)
+	// modsProvider := ai.NewModsProvider(&cfg.AI)
+	// manager.RegisterProvider(modsProvider)
+
+	// TODO: Initialize Claude provider (Claude Code integration)
+	// claudeProvider := ai.NewClaudeProvider(&cfg.AI)
+	// manager.RegisterProvider(claudeProvider)
+
+	return manager
+}
+
 // Init is the Bubble Tea initialization method.
 // It returns commands to load character and quests from storage,
 // and subscribes to game events for real-time UI updates.
@@ -150,7 +189,8 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		loadCharacterCmd(m.storage),
 		loadQuestsCmd(m.storage),
-		listenForGameEvents(m.eventBus), // Subscribe to game events
+		screens.LoadChatHistory(),           // Load chat history for mentor screen
+		listenForGameEvents(m.eventBus),     // Subscribe to game events
 	)
 }
 
@@ -182,6 +222,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Update mentor screen size
+		if m.mentorScreen != nil {
+			m.mentorScreen.SetSize(m.width, m.height)
+		}
 		return m, nil
 
 	// Character loaded from storage
@@ -411,9 +455,32 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleQuestBoardKeys(msg)
 	}
 
+	// Mentor screen specific keys
+	if m.currentScreen == ScreenMentor {
+		return m.handleMentorKeys(msg)
+	}
+
 	// Escape key - return to dashboard from any screen
 	if key.Matches(msg, m.keys.Esc) && m.currentScreen != ScreenDashboard {
 		return m.switchScreen(ScreenDashboard)
+	}
+
+	return m, nil
+}
+
+// handleMentorKeys handles keyboard input specific to the Mentor screen.
+// Delegates most handling to the MentorScreen component.
+func (m Model) handleMentorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Esc key returns to dashboard
+	if key.Matches(msg, m.keys.Esc) {
+		return m.switchScreen(ScreenDashboard)
+	}
+
+	// Delegate to MentorScreen component
+	if m.mentorScreen != nil {
+		updatedScreen, cmd := m.mentorScreen.Update(msg)
+		m.mentorScreen = updatedScreen
+		return m, cmd
 	}
 
 	return m, nil
@@ -591,12 +658,34 @@ func (m Model) viewCharacter() string {
 }
 
 // viewMentor renders the mentor/AI assistant screen.
-// Delegates to screens.RenderMentor for full implementation.
+// Uses the MentorScreen component for interactive chat.
 func (m Model) viewMentor() string {
+	if m.mentorScreen != nil {
+		// Render header
+		header := screens.RenderMentorHeader(m.character, m.width)
+
+		// Get mentor screen view
+		mentorView := m.mentorScreen.View()
+
+		// Render footer
+		footer := screens.RenderMentorFooter(m.width)
+
+		// Combine all parts
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			header,
+			"",
+			mentorView,
+			"",
+			footer,
+		)
+	}
+
+	// Fallback to static render if mentor screen not initialized
 	return screens.RenderMentor(
 		m.character,
-		m.mentorInputText,
-		m.mentorConversation,
+		"",
+		[]screens.Message{},
 		m.width,
 		m.height,
 	)

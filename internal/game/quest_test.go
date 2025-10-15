@@ -226,26 +226,26 @@ func TestQuest_IsAvailable(t *testing.T) {
 // TestQuest_Start tests starting a quest
 func TestQuest_Start(t *testing.T) {
 	tests := []struct {
-		name        string
-		status      QuestStatus
-		repoPath    string
-		baseSHA     string
-		wantErr     bool
-		wantErrMsg  string
+		name       string
+		status     QuestStatus
+		repoPath   string
+		baseSHA    string
+		wantErr    bool
+		wantErrMsg string
 	}{
 		{
-			name:       "start available quest",
-			status:     QuestAvailable,
-			repoPath:   "/path/to/repo",
-			baseSHA:    "abc123",
-			wantErr:    false,
+			name:     "start available quest",
+			status:   QuestAvailable,
+			repoPath: "/path/to/repo",
+			baseSHA:  "abc123",
+			wantErr:  false,
 		},
 		{
-			name:       "start available quest no repo",
-			status:     QuestAvailable,
-			repoPath:   "",
-			baseSHA:    "",
-			wantErr:    false,
+			name:     "start available quest no repo",
+			status:   QuestAvailable,
+			repoPath: "",
+			baseSHA:  "",
+			wantErr:  false,
 		},
 		{
 			name:       "start active quest",
@@ -324,103 +324,103 @@ func TestQuest_Start(t *testing.T) {
 // TestQuest_UpdateProgress tests quest progress tracking
 func TestQuest_UpdateProgress(t *testing.T) {
 	tests := []struct {
-		name            string
-		status          QuestStatus
-		target          int
-		initialCurrent  int
-		amount          int
-		wantCurrent     int
-		wantProgress    float64
+		name           string
+		status         QuestStatus
+		target         int
+		initialCurrent int
+		amount         int
+		wantCurrent    int
+		wantProgress   float64
 	}{
 		{
-			name:            "add progress to active quest",
-			status:          QuestActive,
-			target:          10,
-			initialCurrent:  0,
-			amount:          3,
-			wantCurrent:     3,
-			wantProgress:    0.3,
+			name:           "add progress to active quest",
+			status:         QuestActive,
+			target:         10,
+			initialCurrent: 0,
+			amount:         3,
+			wantCurrent:    3,
+			wantProgress:   0.3,
 		},
 		{
-			name:            "add progress multiple times",
-			status:          QuestActive,
-			target:          100,
-			initialCurrent:  50,
-			amount:          25,
-			wantCurrent:     75,
-			wantProgress:    0.75,
+			name:           "add progress multiple times",
+			status:         QuestActive,
+			target:         100,
+			initialCurrent: 50,
+			amount:         25,
+			wantCurrent:    75,
+			wantProgress:   0.75,
 		},
 		{
-			name:            "reach target exactly",
-			status:          QuestActive,
-			target:          10,
-			initialCurrent:  8,
-			amount:          2,
-			wantCurrent:     10,
-			wantProgress:    1.0,
+			name:           "reach target exactly",
+			status:         QuestActive,
+			target:         10,
+			initialCurrent: 8,
+			amount:         2,
+			wantCurrent:    10,
+			wantProgress:   1.0,
 		},
 		{
-			name:            "exceed target (should clamp)",
-			status:          QuestActive,
-			target:          10,
-			initialCurrent:  8,
-			amount:          5,
-			wantCurrent:     10,
-			wantProgress:    1.0,
+			name:           "exceed target (should clamp)",
+			status:         QuestActive,
+			target:         10,
+			initialCurrent: 8,
+			amount:         5,
+			wantCurrent:    10,
+			wantProgress:   1.0,
 		},
 		{
-			name:            "zero amount (no change)",
-			status:          QuestActive,
-			target:          10,
-			initialCurrent:  5,
-			amount:          0,
-			wantCurrent:     5,
-			wantProgress:    0.5,
+			name:           "zero amount (no change)",
+			status:         QuestActive,
+			target:         10,
+			initialCurrent: 5,
+			amount:         0,
+			wantCurrent:    5,
+			wantProgress:   0.5,
 		},
 		{
-			name:            "negative amount (no change)",
-			status:          QuestActive,
-			target:          10,
-			initialCurrent:  5,
-			amount:          -3,
-			wantCurrent:     5,
-			wantProgress:    0.5,
+			name:           "negative amount (no change)",
+			status:         QuestActive,
+			target:         10,
+			initialCurrent: 5,
+			amount:         -3,
+			wantCurrent:    5,
+			wantProgress:   0.5,
 		},
 		{
-			name:            "update available quest (no change)",
-			status:          QuestAvailable,
-			target:          10,
-			initialCurrent:  0,
-			amount:          5,
-			wantCurrent:     0,
-			wantProgress:    0.0,
+			name:           "update available quest (no change)",
+			status:         QuestAvailable,
+			target:         10,
+			initialCurrent: 0,
+			amount:         5,
+			wantCurrent:    0,
+			wantProgress:   0.0,
 		},
 		{
-			name:            "update completed quest (no change)",
-			status:          QuestCompleted,
-			target:          10,
-			initialCurrent:  10,
-			amount:          5,
-			wantCurrent:     10,
-			wantProgress:    1.0,
+			name:           "update completed quest (no change)",
+			status:         QuestCompleted,
+			target:         10,
+			initialCurrent: 10,
+			amount:         5,
+			wantCurrent:    10,
+			wantProgress:   1.0,
 		},
 		{
-			name:            "zero target edge case",
-			status:          QuestActive,
-			target:          0,
-			initialCurrent:  0,
-			amount:          5,
-			wantCurrent:     0,
-			wantProgress:    1.0,
+			name:           "zero target edge case",
+			status:         QuestActive,
+			target:         0,
+			initialCurrent: 0,
+			amount:         5,
+			wantCurrent:    0,
+			wantProgress:   1.0,
 		},
 		{
-			name:            "large numbers",
-			status:          QuestActive,
-			target:          10000,
-			initialCurrent:  5000,
-			amount:          2500,
-			wantCurrent:     7500,
-			wantProgress:    0.75,
+			name:           "large numbers",
+			status:         QuestActive,
+			target:         10000,
+			initialCurrent: 5000,
+			amount:         2500,
+			wantCurrent:    7500,
+			wantProgress:   0.75,
 		},
 	}
 

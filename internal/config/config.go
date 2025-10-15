@@ -36,7 +36,7 @@ type GameConfig struct {
 
 // UIConfig contains user interface preferences.
 type UIConfig struct {
-	Theme            string `toml:"theme"`              // dark, light, auto
+	Theme            string `toml:"theme"` // dark, light, auto
 	ShowAnimations   bool   `toml:"show_animations"`
 	CompactMode      bool   `toml:"compact_mode"`
 	ShowKeybindHints bool   `toml:"show_keybind_hints"`

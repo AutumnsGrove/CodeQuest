@@ -14,11 +14,9 @@ import (
 
 // Color constants (duplicated here to avoid import cycle with ui package)
 var (
-	colorAccent  = lipgloss.Color("86")  // Cyan
-	colorSuccess = lipgloss.Color("42")  // Green
-	colorWarning = lipgloss.Color("214") // Orange
-	colorInfo    = lipgloss.Color("69")  // Blue
-	colorDim     = lipgloss.Color("240") // Gray
+	timerColorSuccess = lipgloss.Color("42")  // Green
+	timerColorWarning = lipgloss.Color("214") // Orange
+	timerColorInfo    = lipgloss.Color("69")  // Blue
 )
 
 // Timer display modes for different contexts
@@ -192,7 +190,7 @@ func renderTimerCard(duration time.Duration, isRunning bool, width int) string {
 	var breakReminder string
 	if duration >= 5*time.Hour {
 		breakStyle := lipgloss.NewStyle().
-			Foreground(colorWarning).
+			Foreground(timerColorWarning).
 			Bold(true).
 			Align(lipgloss.Center)
 		breakReminder = "\n" + breakStyle.Render("⚠ Take a break!")
@@ -204,13 +202,13 @@ func renderTimerCard(duration time.Duration, isRunning bool, width int) string {
 	// Wrap in a box with appropriate border color
 	borderColor := colorAccent
 	if isRunning {
-		borderColor = colorSuccess // Green border when running
+		borderColor = timerColorSuccess // Green border when running
 	}
 
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
-		Width(width - 4). // Account for padding
+		Width(width-4). // Account for padding
 		Padding(1, 2)
 
 	return boxStyle.Render(content)
@@ -271,13 +269,13 @@ func getTimerColor(d time.Duration) lipgloss.Color {
 
 	switch {
 	case hours >= 5.0:
-		return colorWarning // 5+ hours: Orange (take a break!)
+		return timerColorWarning // 5+ hours: Orange (take a break!)
 	case hours >= 3.0:
-		return colorSuccess // 3-5 hours: Green (great session)
+		return timerColorSuccess // 3-5 hours: Green (great session)
 	case hours >= 1.0:
-		return colorInfo // 1-3 hours: Cyan (good work)
+		return timerColorInfo // 1-3 hours: Cyan (good work)
 	default:
-		return colorDim // 0-1 hour: Gray (warming up)
+		return colorDim // 0-1 hour: Gray (warming up) - use from header.go
 	}
 }
 

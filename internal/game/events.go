@@ -323,11 +323,11 @@ func NewCommitEvent(sha, message string, filesChanged, linesAdded, linesRemoved 
 		Type:      EventCommit,
 		Timestamp: time.Now(),
 		Data: map[string]interface{}{
-			"sha":            sha,
-			"message":        message,
-			"files_changed":  filesChanged,
-			"lines_added":    linesAdded,
-			"lines_removed":  linesRemoved,
+			"sha":           sha,
+			"message":       message,
+			"files_changed": filesChanged,
+			"lines_added":   linesAdded,
+			"lines_removed": linesRemoved,
 		},
 	}
 }

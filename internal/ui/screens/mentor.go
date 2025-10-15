@@ -467,7 +467,7 @@ func RenderMentorHeader(char *game.Character, width int) string {
 			Bold(true).
 			Border(lipgloss.RoundedBorder(), false, false, true, false).
 			BorderForeground(colorAccent).
-			Width(width - 4).
+			Width(width-4).
 			Padding(0, 1).
 			MarginBottom(1)
 		return style.Render("🧙 AI Mentor")
@@ -533,7 +533,7 @@ func RenderMentorHeader(char *game.Character, width int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), false, false, true, false).
 		BorderForeground(colorAccent).
-		Width(width - 4).
+		Width(width-4).
 		Padding(0, 1).
 		MarginBottom(1)
 

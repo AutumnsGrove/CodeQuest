@@ -139,9 +139,9 @@ func TestMVP_CommitFlow(t *testing.T) {
 	bigCommitEvent := game.NewCommitEvent(
 		"def456",
 		"feat: Major feature",
-		10, // files changed
+		10,  // files changed
 		100, // lines added (will award 60 XP: 10 base + 50 capped bonus)
-		0,  // lines removed
+		0,   // lines removed
 	)
 
 	eventBus.Publish(bigCommitEvent)
@@ -307,10 +307,10 @@ func TestMVP_QuestProgress(t *testing.T) {
 
 	// Update progress incrementally
 	tests := []struct {
-		lines           int
-		expectedCurrent int
+		lines            int
+		expectedCurrent  int
 		expectedProgress float64
-		shouldComplete  bool
+		shouldComplete   bool
 	}{
 		{100, 100, 0.2, false},
 		{150, 250, 0.5, false},

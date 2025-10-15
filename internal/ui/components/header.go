@@ -24,9 +24,10 @@ var (
 // The header includes the CodeQuest title, current screen name, and character info.
 //
 // Layout:
-//   ┌────────────────────────────────────────────────┐
-//   │ 🎮 CodeQuest          [Dashboard]    Player Lvl 5 │
-//   └────────────────────────────────────────────────┘
+//
+//	┌────────────────────────────────────────────────┐
+//	│ 🎮 CodeQuest          [Dashboard]    Player Lvl 5 │
+//	└────────────────────────────────────────────────┘
 //
 // Parameters:
 //   - screenName: The name of the current screen (e.g., "Dashboard", "Quest Board")
@@ -181,7 +182,7 @@ func wrapHeader(content string, width int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), false, false, true, false). // Bottom border only
 		BorderForeground(colorAccent).
-		Width(width - 4). // Account for padding
+		Width(width-4). // Account for padding
 		Padding(0, 1).
 		MarginBottom(1)
 
@@ -203,7 +204,7 @@ func renderMinimalHeader(screenName string, width int) string {
 		Bold(true).
 		Border(lipgloss.RoundedBorder(), false, false, true, false).
 		BorderForeground(colorAccent).
-		Width(width - 4).
+		Width(width-4).
 		Padding(0, 1).
 		MarginBottom(1)
 

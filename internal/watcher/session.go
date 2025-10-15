@@ -114,11 +114,11 @@ type Storage interface {
 // sessionStateData is the internal structure for persistence.
 // This is what gets serialized to JSON and stored in Skate.
 type sessionStateData struct {
-	StartTime    time.Time     `json:"start_time"`     // When session started (adjusted for pause)
-	TotalElapsed time.Duration `json:"total_elapsed"`  // Accumulated time
-	State        string        `json:"state"`          // "stopped", "running", or "paused"
-	SavedAt      time.Time     `json:"saved_at"`       // When state was saved
-	CharacterID  string        `json:"character_id"`   // Character this session belongs to
+	StartTime    time.Time     `json:"start_time"`    // When session started (adjusted for pause)
+	TotalElapsed time.Duration `json:"total_elapsed"` // Accumulated time
+	State        string        `json:"state"`         // "stopped", "running", or "paused"
+	SavedAt      time.Time     `json:"saved_at"`      // When state was saved
+	CharacterID  string        `json:"character_id"`  // Character this session belongs to
 }
 
 // NewSessionTracker creates a new session tracker for the given character.

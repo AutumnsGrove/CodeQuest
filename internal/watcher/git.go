@@ -24,11 +24,11 @@ type CommitEvent struct {
 	RepoPath string `json:"repo_path"` // Absolute path to repository
 
 	// Commit identification
-	SHA       string    `json:"sha"`        // Full commit hash
-	Timestamp time.Time `json:"timestamp"`  // Commit timestamp
-	Author    string    `json:"author"`     // Author name
-	Email     string    `json:"email"`      // Author email
-	Message   string    `json:"message"`    // Full commit message
+	SHA       string    `json:"sha"`       // Full commit hash
+	Timestamp time.Time `json:"timestamp"` // Commit timestamp
+	Author    string    `json:"author"`    // Author name
+	Email     string    `json:"email"`     // Author email
+	Message   string    `json:"message"`   // Full commit message
 
 	// Change statistics
 	FilesChanged []FileChange `json:"files_changed"` // Detailed file changes
@@ -59,16 +59,16 @@ type FileChange struct {
 //  3. Read from CommitChannel() to receive events
 //  4. Call Stop() when done to clean up resources
 type GitWatcher struct {
-	repoPath     string                  // Absolute path to repository
-	repo         *git.Repository         // go-git repository handle
-	watcher      *fsnotify.Watcher       // File system watcher
-	commits      chan CommitEvent        // Channel for commit events
-	errors       chan error              // Channel for error reporting
-	done         chan struct{}           // Signal channel for shutdown
-	lastCommitSHA plumbing.Hash          // Track last seen commit to avoid duplicates
-	mu           sync.RWMutex            // Protects lastCommitSHA
-	running      bool                    // Track running state
-	runningMu    sync.Mutex              // Protects running flag
+	repoPath      string            // Absolute path to repository
+	repo          *git.Repository   // go-git repository handle
+	watcher       *fsnotify.Watcher // File system watcher
+	commits       chan CommitEvent  // Channel for commit events
+	errors        chan error        // Channel for error reporting
+	done          chan struct{}     // Signal channel for shutdown
+	lastCommitSHA plumbing.Hash     // Track last seen commit to avoid duplicates
+	mu            sync.RWMutex      // Protects lastCommitSHA
+	running       bool              // Track running state
+	runningMu     sync.Mutex        // Protects running flag
 }
 
 // NewGitWatcher creates a new Git repository watcher.
@@ -134,7 +134,7 @@ func NewGitWatcher(repoPath string) (*GitWatcher, error) {
 		repo:          repo,
 		watcher:       fsWatcher,
 		commits:       make(chan CommitEvent, 10), // Buffer to prevent blocking
-		errors:        make(chan error, 10),        // Buffer for error reporting
+		errors:        make(chan error, 10),       // Buffer for error reporting
 		done:          make(chan struct{}),
 		lastCommitSHA: lastSHA,
 		running:       false,

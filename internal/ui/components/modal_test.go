@@ -356,10 +356,10 @@ func TestWordWrap(t *testing.T) {
 // TestCalculateModalWidth verifies width calculation
 func TestCalculateModalWidth(t *testing.T) {
 	tests := []struct {
-		name       string
-		content    string
-		minWidth   int
-		maxWidth   int
+		name        string
+		content     string
+		minWidth    int
+		maxWidth    int
 		wantInRange bool
 	}{
 		{

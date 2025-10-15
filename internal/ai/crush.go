@@ -27,11 +27,11 @@ type CrushProvider struct {
 
 // openRouterRequest represents the request format for OpenRouter API
 type openRouterRequest struct {
-	Model       string                   `json:"model"`
-	Messages    []openRouterMessage      `json:"messages"`
-	MaxTokens   int                      `json:"max_tokens,omitempty"`
-	Temperature float64                  `json:"temperature,omitempty"`
-	Metadata    map[string]interface{}   `json:"metadata,omitempty"`
+	Model       string                 `json:"model"`
+	Messages    []openRouterMessage    `json:"messages"`
+	MaxTokens   int                    `json:"max_tokens,omitempty"`
+	Temperature float64                `json:"temperature,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // openRouterMessage represents a message in the OpenRouter chat format
@@ -42,10 +42,10 @@ type openRouterMessage struct {
 
 // openRouterResponse represents the response from OpenRouter API
 type openRouterResponse struct {
-	ID      string                 `json:"id"`
-	Choices []openRouterChoice     `json:"choices"`
-	Usage   openRouterUsage        `json:"usage"`
-	Error   *openRouterError       `json:"error,omitempty"`
+	ID      string             `json:"id"`
+	Choices []openRouterChoice `json:"choices"`
+	Usage   openRouterUsage    `json:"usage"`
+	Error   *openRouterError   `json:"error,omitempty"`
 }
 
 // openRouterChoice represents a completion choice
@@ -83,7 +83,7 @@ func NewCrushProvider(apiKey string, cfg *config.AIConfig) *CrushProvider {
 			Timeout: 30 * time.Second,
 		},
 		rateLimiter: NewRateLimiter(20, time.Minute), // 20 requests per minute
-		priority:    1,                                 // Highest priority
+		priority:    1,                               // Highest priority
 		config:      cfg,
 	}
 }

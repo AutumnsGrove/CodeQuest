@@ -24,13 +24,13 @@ const (
 type QuestType string
 
 const (
-	QuestTypeCommit    QuestType = "commit"    // Make N commits
-	QuestTypeLines     QuestType = "lines"     // Add/modify N lines of code
-	QuestTypeTests     QuestType = "tests"     // Add N test cases (post-MVP)
-	QuestTypePR        QuestType = "pr"        // Create/merge pull request (post-MVP)
-	QuestTypeRefactor  QuestType = "refactor"  // Refactor code (post-MVP)
-	QuestTypeDaily     QuestType = "daily"     // Daily quest (post-MVP)
-	QuestTypeStreak    QuestType = "streak"    // Maintain N-day streak (post-MVP)
+	QuestTypeCommit   QuestType = "commit"   // Make N commits
+	QuestTypeLines    QuestType = "lines"    // Add/modify N lines of code
+	QuestTypeTests    QuestType = "tests"    // Add N test cases (post-MVP)
+	QuestTypePR       QuestType = "pr"       // Create/merge pull request (post-MVP)
+	QuestTypeRefactor QuestType = "refactor" // Refactor code (post-MVP)
+	QuestTypeDaily    QuestType = "daily"    // Daily quest (post-MVP)
+	QuestTypeStreak   QuestType = "streak"   // Maintain N-day streak (post-MVP)
 )
 
 // Quest represents a coding task or challenge that players can accept and complete.
@@ -51,19 +51,19 @@ type Quest struct {
 	Current int `json:"current"` // Current progress toward target
 
 	// Rewards - What the player earns upon completion
-	XPReward      int      `json:"xp_reward"`                 // Base XP awarded (before multipliers)
-	UnlocksSkills []string `json:"unlocks_skills,omitempty"`  // Skills unlocked (post-MVP)
-	UnlocksQuests []string `json:"unlocks_quests,omitempty"`  // Quests unlocked (post-MVP)
+	XPReward      int      `json:"xp_reward"`                // Base XP awarded (before multipliers)
+	UnlocksSkills []string `json:"unlocks_skills,omitempty"` // Skills unlocked (post-MVP)
+	UnlocksQuests []string `json:"unlocks_quests,omitempty"` // Quests unlocked (post-MVP)
 
 	// Tracking - Git repository context for the quest
 	GitRepo    string `json:"git_repo,omitempty"`     // Path to the git repository
 	GitBaseSHA string `json:"git_base_sha,omitempty"` // Starting commit SHA
 
 	// Status - Current state and progress
-	Status      QuestStatus `json:"status"`                  // Current lifecycle state
-	StartedAt   *time.Time  `json:"started_at,omitempty"`    // When quest was started
-	CompletedAt *time.Time  `json:"completed_at,omitempty"`  // When quest was completed
-	Progress    float64     `json:"progress"`                // Progress percentage (0.0 to 1.0)
+	Status      QuestStatus `json:"status"`                 // Current lifecycle state
+	StartedAt   *time.Time  `json:"started_at,omitempty"`   // When quest was started
+	CompletedAt *time.Time  `json:"completed_at,omitempty"` // When quest was completed
+	Progress    float64     `json:"progress"`               // Progress percentage (0.0 to 1.0)
 }
 
 // NewQuest creates a new quest with the given parameters.

@@ -82,8 +82,8 @@ func RenderModal(title, content string, width, height int, modalType ModalType) 
 		Width:      width,
 		Height:     height,
 		ModalType:  modalType,
-		TermWidth:  80,  // Default terminal width
-		TermHeight: 24,  // Default terminal height
+		TermWidth:  80, // Default terminal width
+		TermHeight: 24, // Default terminal height
 	}
 
 	return RenderModalWithConfig(config)

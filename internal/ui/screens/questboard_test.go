@@ -678,9 +678,9 @@ func createTestQuest(title string, status game.QuestStatus) *game.Quest {
 		title,
 		"Test quest description",
 		game.QuestTypeCommit,
-		5,    // target
-		100,  // xpReward
-		1,    // requiredLevel
+		5,   // target
+		100, // xpReward
+		1,   // requiredLevel
 	)
 	quest.Status = status
 	return quest

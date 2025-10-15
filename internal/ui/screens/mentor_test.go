@@ -48,17 +48,18 @@ func TestRenderMentor(t *testing.T) {
 		char := game.NewCharacter("TestPlayer")
 		messages := []Message{
 			{
-				Sender:    "system",
+				Role:      "system",
 				Content:   "Session started",
 				Timestamp: time.Now().Add(-10 * time.Minute),
 			},
 			{
-				Sender:    "user",
+				Role:      "user",
 				Content:   "How do I optimize this loop?",
 				Timestamp: time.Now().Add(-5 * time.Minute),
 			},
 			{
-				Sender:    "crush",
+				Role:      "assistant",
+				Provider:  "crush",
 				Content:   "You can optimize by using a map instead of nested loops.",
 				Timestamp: time.Now(),
 			},
@@ -127,7 +128,7 @@ func TestRenderMentorHeader(t *testing.T) {
 		char := game.NewCharacter("TestHero")
 		char.Level = 5
 
-		result := renderMentorHeader(char, 80)
+		result := RenderMentorHeader(char, 80)
 
 		// Due to ANSI styling codes, we check for character name presence
 		if !strings.Contains(result, "TestHero") {
@@ -146,7 +147,7 @@ func TestRenderMentorHeader(t *testing.T) {
 	})
 
 	t.Run("renders header without character", func(t *testing.T) {
-		result := renderMentorHeader(nil, 80)
+		result := RenderMentorHeader(nil, 80)
 
 		// Check for screen name
 		if !strings.Contains(result, "AI Mentor") {
@@ -161,7 +162,7 @@ func TestRenderMentorHeader(t *testing.T) {
 
 	t.Run("renders minimal header for narrow width", func(t *testing.T) {
 		char := game.NewCharacter("TestHero")
-		result := renderMentorHeader(char, 30)
+		result := RenderMentorHeader(char, 30)
 
 		if !strings.Contains(result, "AI Mentor") {
 			t.Error("Expected screen name even in minimal header")
@@ -221,12 +222,13 @@ func TestRenderConversation(t *testing.T) {
 	t.Run("renders multiple messages", func(t *testing.T) {
 		messages := []Message{
 			{
-				Sender:    "user",
+				Role:      "user",
 				Content:   "Hello AI",
 				Timestamp: time.Now(),
 			},
 			{
-				Sender:    "crush",
+				Role:      "assistant",
+				Provider:  "crush",
 				Content:   "Hello! How can I help?",
 				Timestamp: time.Now(),
 			},
@@ -248,7 +250,7 @@ func TestRenderConversation(t *testing.T) {
 		messages := make([]Message, 20)
 		for i := 0; i < 20; i++ {
 			messages[i] = Message{
-				Sender:    "user",
+				Role:      "user",
 				Content:   "Message " + string(rune('A'+i)),
 				Timestamp: time.Now(),
 			}
@@ -269,12 +271,12 @@ func TestRenderMessage(t *testing.T) {
 
 	t.Run("renders user message", func(t *testing.T) {
 		msg := Message{
-			Sender:    "user",
+			Role:      "user",
 			Content:   "Test user message",
 			Timestamp: timestamp,
 		}
 
-		result := renderMessage(msg, 80)
+		result := renderMessageStatic(msg, 80)
 
 		if !strings.Contains(result, "Test user message") {
 			t.Error("Expected message content")
@@ -287,12 +289,13 @@ func TestRenderMessage(t *testing.T) {
 
 	t.Run("renders crush message", func(t *testing.T) {
 		msg := Message{
-			Sender:    "crush",
+			Role:      "assistant",
+			Provider:  "crush",
 			Content:   "Test AI response",
 			Timestamp: timestamp,
 		}
 
-		result := renderMessage(msg, 80)
+		result := renderMessageStatic(msg, 80)
 
 		if !strings.Contains(result, "Test AI response") {
 			t.Error("Expected message content")
@@ -305,12 +308,13 @@ func TestRenderMessage(t *testing.T) {
 
 	t.Run("renders mods message", func(t *testing.T) {
 		msg := Message{
-			Sender:    "mods",
+			Role:      "assistant",
+			Provider:  "mods",
 			Content:   "Local AI response",
 			Timestamp: timestamp,
 		}
 
-		result := renderMessage(msg, 80)
+		result := renderMessageStatic(msg, 80)
 
 		if !strings.Contains(result, "Local AI response") {
 			t.Error("Expected message content")
@@ -323,12 +327,13 @@ func TestRenderMessage(t *testing.T) {
 
 	t.Run("renders claude message", func(t *testing.T) {
 		msg := Message{
-			Sender:    "claude",
+			Role:      "assistant",
+			Provider:  "claude",
 			Content:   "Claude AI response",
 			Timestamp: timestamp,
 		}
 
-		result := renderMessage(msg, 80)
+		result := renderMessageStatic(msg, 80)
 
 		if !strings.Contains(result, "Claude AI response") {
 			t.Error("Expected message content")
@@ -341,12 +346,12 @@ func TestRenderMessage(t *testing.T) {
 
 	t.Run("renders system message", func(t *testing.T) {
 		msg := Message{
-			Sender:    "system",
+			Role:      "system",
 			Content:   "Session started",
 			Timestamp: timestamp,
 		}
 
-		result := renderMessage(msg, 80)
+		result := renderMessageStatic(msg, 80)
 
 		if !strings.Contains(result, "Session started") {
 			t.Error("Expected message content")
@@ -421,7 +426,7 @@ func TestRenderInputArea(t *testing.T) {
 // TestRenderMentorFooter tests footer rendering.
 func TestRenderMentorFooter(t *testing.T) {
 	t.Run("renders footer with key bindings", func(t *testing.T) {
-		result := renderMentorFooter(80)
+		result := RenderMentorFooter(80)
 
 		if !strings.Contains(result, "[Enter]") {
 			t.Error("Expected Enter key binding")
@@ -569,13 +574,13 @@ func TestGetAIProviderStatus(t *testing.T) {
 func TestMessageStruct(t *testing.T) {
 	t.Run("creates message", func(t *testing.T) {
 		msg := Message{
-			Sender:    "user",
+			Role:      "user",
 			Content:   "Test message",
 			Timestamp: time.Now(),
 		}
 
-		if msg.Sender != "user" {
-			t.Error("Expected sender to be set")
+		if msg.Role != "user" {
+			t.Error("Expected role to be set")
 		}
 
 		if msg.Content != "Test message" {
@@ -615,8 +620,8 @@ func TestAIProviderStatusStruct(t *testing.T) {
 func BenchmarkRenderMentor(b *testing.B) {
 	char := game.NewCharacter("BenchPlayer")
 	messages := []Message{
-		{Sender: "user", Content: "Test question", Timestamp: time.Now()},
-		{Sender: "crush", Content: "Test response", Timestamp: time.Now()},
+		{Role: "user", Content: "Test question", Timestamp: time.Now()},
+		{Role: "assistant", Provider: "crush", Content: "Test response", Timestamp: time.Now()},
 	}
 
 	b.ResetTimer()
@@ -629,7 +634,7 @@ func BenchmarkRenderConversation(b *testing.B) {
 	messages := make([]Message, 10)
 	for i := 0; i < 10; i++ {
 		messages[i] = Message{
-			Sender:    "user",
+			Role:      "user",
 			Content:   "Benchmark message " + string(rune('A'+i)),
 			Timestamp: time.Now(),
 		}

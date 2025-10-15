@@ -59,8 +59,8 @@ var (
 			Foreground(ColorDim)
 
 	MutedTextStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted).
-				Italic(true)
+			Foreground(ColorMuted).
+			Italic(true)
 
 	ErrorTextStyle = lipgloss.NewStyle().
 			Bold(true).

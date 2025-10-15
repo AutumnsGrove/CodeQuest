@@ -432,9 +432,9 @@ func (wm *WatcherManager) convertCommitToEvent(commit CommitEvent) game.Event {
 			"timestamp": commit.Timestamp, // Original commit timestamp
 
 			// Change statistics (for XP calculation)
-			"files_changed":  commit.TotalFiles,
-			"lines_added":    commit.TotalAdded,
-			"lines_removed":  commit.TotalRemoved,
+			"files_changed": commit.TotalFiles,
+			"lines_added":   commit.TotalAdded,
+			"lines_removed": commit.TotalRemoved,
 
 			// Repository context
 			"repo_path": commit.RepoPath,

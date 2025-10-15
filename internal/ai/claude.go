@@ -35,7 +35,7 @@ func NewClaudeProvider(cfg *config.AIConfig) *ClaudeProvider {
 	return &ClaudeProvider{
 		executable:  executable,
 		rateLimiter: NewRateLimiter(5, time.Minute), // 5 requests per minute (most conservative)
-		priority:    3,                               // Lowest priority - backup provider
+		priority:    3,                              // Lowest priority - backup provider
 		config:      cfg,
 	}
 }

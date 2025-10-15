@@ -20,7 +20,7 @@ var (
 	ColorSecondary = lipgloss.Color("63")  // Purple - Secondary accent
 
 	// Accent colors - Highlights and focus
-	ColorAccent   = lipgloss.Color("86")  // Cyan - Interactive elements
+	ColorAccent    = lipgloss.Color("86") // Cyan - Interactive elements
 	ColorAccentAlt = lipgloss.Color("39") // Bright Cyan - Hover states
 
 	// Status colors - Semantic meaning
@@ -35,10 +35,10 @@ var (
 	ColorMuted  = lipgloss.Color("243") // Light gray - Secondary text
 
 	// RPG-specific colors
-	ColorXP     = lipgloss.Color("226") // Gold/Yellow - XP and rewards
-	ColorLevel  = lipgloss.Color("93")  // Yellow-Orange - Level indicators
-	ColorQuest  = lipgloss.Color("111") // Light Blue - Quest markers
-	ColorMagic  = lipgloss.Color("177") // Lavender - Magic/special effects
+	ColorXP    = lipgloss.Color("226") // Gold/Yellow - XP and rewards
+	ColorLevel = lipgloss.Color("93")  // Yellow-Orange - Level indicators
+	ColorQuest = lipgloss.Color("111") // Light Blue - Quest markers
+	ColorMagic = lipgloss.Color("177") // Lavender - Magic/special effects
 )
 
 // ============================================================================
@@ -90,13 +90,13 @@ var (
 
 	// SuccessTextStyle - Success messages
 	SuccessTextStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorSuccess)
+				Bold(true).
+				Foreground(ColorSuccess)
 
 	// WarningTextStyle - Warning messages
 	WarningTextStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(ColorWarning)
+				Bold(true).
+				Foreground(ColorWarning)
 
 	// InfoTextStyle - Informational messages
 	InfoTextStyle = lipgloss.NewStyle().

@@ -35,7 +35,7 @@ func NewModsProvider(cfg *config.AIConfig) *ModsProvider {
 		executable:  executable,
 		model:       cfg.Review.ModelPrimary,
 		rateLimiter: NewRateLimiter(10, time.Minute), // 10 requests per minute (conservative for local)
-		priority:    2,                                // Second priority after Crush
+		priority:    2,                               // Second priority after Crush
 		config:      cfg,
 	}
 }

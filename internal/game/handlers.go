@@ -279,8 +279,8 @@ func (h *GameEventHandler) extractCommitData(event Event) (int, int, string, str
 
 // updateQuestProgress updates progress for all active quests that track commits or lines.
 // This checks each quest's type and updates progress accordingly:
-//  - QuestTypeCommit: Increment progress by 1 (one commit completed)
-//  - QuestTypeLines: Increment progress by total lines changed
+//   - QuestTypeCommit: Increment progress by 1 (one commit completed)
+//   - QuestTypeLines: Increment progress by total lines changed
 //
 // If a quest is completed during this update, a EventQuestDone event is published.
 //

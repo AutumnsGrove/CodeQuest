@@ -96,8 +96,8 @@ func ExampleExpandPaths() {
 	fmt.Printf("Number of paths: %d\n", len(expanded))
 	fmt.Printf("All paths are absolute: %v\n",
 		len(expanded[0]) > 0 && expanded[0][0] == '/' &&
-		expanded[1][0] == '/' &&
-		len(expanded[2]) > 0 && expanded[2][0] == '/')
+			expanded[1][0] == '/' &&
+			len(expanded[2]) > 0 && expanded[2][0] == '/')
 
 	// Output:
 	// Number of paths: 3

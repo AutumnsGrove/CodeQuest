@@ -186,9 +186,9 @@ func TestApplyDifficultyMultiplier(t *testing.T) {
 		{"empty - 100 XP", 100, "", 100},
 
 		// Rounding tests
-		{"easy - rounds up", 51, DifficultyEasy, 61},    // 51 * 1.2 = 61.2 → 61
-		{"hard - rounds down", 51, DifficultyHard, 41},  // 51 * 0.8 = 40.8 → 41
-		{"hard - rounds up", 56, DifficultyHard, 45},    // 56 * 0.8 = 44.8 → 45
+		{"easy - rounds up", 51, DifficultyEasy, 61},   // 51 * 1.2 = 61.2 → 61
+		{"hard - rounds down", 51, DifficultyHard, 41}, // 51 * 0.8 = 40.8 → 41
+		{"hard - rounds up", 56, DifficultyHard, 45},   // 56 * 0.8 = 44.8 → 45
 	}
 
 	for _, tt := range tests {
@@ -233,8 +233,8 @@ func TestApplyWisdomBonus(t *testing.T) {
 		{"negative wisdom", 100, -10, 100}, // Should clamp to 1.0x
 
 		// Rounding tests
-		{"15 wisdom - 51 XP", 51, 15, 54},  // 51 * 1.05 = 53.55 → 54
-		{"20 wisdom - 47 XP", 47, 20, 52},  // 47 * 1.10 = 51.7 → 52
+		{"15 wisdom - 51 XP", 51, 15, 54}, // 51 * 1.05 = 53.55 → 54
+		{"20 wisdom - 47 XP", 47, 20, 52}, // 47 * 1.10 = 51.7 → 52
 	}
 
 	for _, tt := range tests {
@@ -261,13 +261,13 @@ func TestCalculateQuestReward(t *testing.T) {
 		questDifficulty string
 		wantXP          int
 	}{
-		{"simple quest", QuestDifficultySimple, questXPSimple},     // 50
-		{"medium quest", QuestDifficultyMedium, questXPMedium},     // 150
-		{"hard quest", QuestDifficultyHard, questXPHard},           // 300
-		{"epic quest", QuestDifficultyEpic, questXPEpic},           // 1000
-		{"invalid difficulty", "invalid", questXPSimple},           // defaults to simple
-		{"empty difficulty", "", questXPSimple},                    // defaults to simple
-		{"case sensitive", "SIMPLE", questXPSimple},                // exact match or default
+		{"simple quest", QuestDifficultySimple, questXPSimple}, // 50
+		{"medium quest", QuestDifficultyMedium, questXPMedium}, // 150
+		{"hard quest", QuestDifficultyHard, questXPHard},       // 300
+		{"epic quest", QuestDifficultyEpic, questXPEpic},       // 1000
+		{"invalid difficulty", "invalid", questXPSimple},       // defaults to simple
+		{"empty difficulty", "", questXPSimple},                // defaults to simple
+		{"case sensitive", "SIMPLE", questXPSimple},            // exact match or default
 	}
 
 	for _, tt := range tests {
@@ -405,10 +405,10 @@ func TestGetTotalXPForLevel(t *testing.T) {
 		wantXP      int
 	}{
 		{"level 1 (starting)", 1, 0},
-		{"level 2", 2, 110},                                                 // 110
-		{"level 3", 3, 350},                                                 // 110 + 240
-		{"level 4", 4, 740},                                                 // 110 + 240 + 390
-		{"level 10", 10, 7350},                                              // sum of levels 1-9
+		{"level 2", 2, 110},    // 110
+		{"level 3", 3, 350},    // 110 + 240
+		{"level 4", 4, 740},    // 110 + 240 + 390
+		{"level 10", 10, 7350}, // sum of levels 1-9
 		{"level 0 (invalid)", 0, 0},
 		{"level -5 (invalid)", -5, 0},
 		{"level 101 (beyond max)", 101, GetTotalXPForLevel(maxLevel)},
@@ -501,7 +501,7 @@ func TestXPEngine_Integration(t *testing.T) {
 
 	// Make another commit to level up (need 20 more XP)
 	commitXP2 := CalculateCommitXP(20, 0) // 30 base XP
-	currentXP += commitXP2                 // Now at 120 XP, should level up
+	currentXP += commitXP2                // Now at 120 XP, should level up
 
 	level, remaining = GetLevelFromXP(currentXP)
 	if level != 2 {

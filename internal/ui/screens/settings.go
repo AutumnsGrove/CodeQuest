@@ -361,13 +361,13 @@ func renderSettingsFooter(width int) string {
 // SettingItem represents a configurable setting item.
 // This will be used for interactive settings editing in the future.
 type SettingItem struct {
-	Label       string            // Display label
-	Key         string            // Config key
-	Value       interface{}       // Current value
-	ValueType   string            // "bool", "string", "int", "float", "choice"
-	Choices     []string          // For "choice" type
-	Description string            // Help text
-	Category    SettingsCategory  // Which category this belongs to
+	Label       string           // Display label
+	Key         string           // Config key
+	Value       interface{}      // Current value
+	ValueType   string           // "bool", "string", "int", "float", "choice"
+	Choices     []string         // For "choice" type
+	Description string           // Help text
+	Category    SettingsCategory // Which category this belongs to
 }
 
 // Example settings structure for future use:
@@ -486,7 +486,7 @@ func renderSettingsHeader(char *game.Character, width int) string {
 			Bold(true).
 			Border(lipgloss.RoundedBorder(), false, false, true, false).
 			BorderForeground(colorAccent).
-			Width(width - 4).
+			Width(width-4).
 			Padding(0, 1).
 			MarginBottom(1)
 		return style.Render("🎮 Settings")
@@ -552,7 +552,7 @@ func renderSettingsHeader(char *game.Character, width int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), false, false, true, false).
 		BorderForeground(colorAccent).
-		Width(width - 4).
+		Width(width-4).
 		Padding(0, 1).
 		MarginBottom(1)
 

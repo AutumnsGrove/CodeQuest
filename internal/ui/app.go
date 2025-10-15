@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/AutumnsGrove/codequest/internal/ai"
 	"github.com/AutumnsGrove/codequest/internal/config"
@@ -50,9 +50,9 @@ const (
 //   - Status: loading, error handling
 type Model struct {
 	// Game State - Core game data
-	character *game.Character  // Player character (nil if not loaded)
-	quests    []*game.Quest    // All quests (active, completed, available)
-	eventBus  *game.EventBus   // Event system for game events
+	character *game.Character // Player character (nil if not loaded)
+	quests    []*game.Quest   // All quests (active, completed, available)
+	eventBus  *game.EventBus  // Event system for game events
 
 	// Storage - Data persistence
 	storage *storage.SkateClient // Skate KV store client
@@ -63,20 +63,20 @@ type Model struct {
 	mentorScreen *screens.MentorScreen // Mentor screen component
 
 	// UI State - Current view and controls
-	currentScreen Screen   // Which screen is currently displayed
-	keys          *KeyMap  // Key bindings for navigation
+	currentScreen Screen  // Which screen is currently displayed
+	keys          *KeyMap // Key bindings for navigation
 
 	// Quest Board state
-	questBoardSelectedIndex int                  // Currently selected quest index
-	questBoardFilter        screens.QuestFilter  // Current quest filter
+	questBoardSelectedIndex int                 // Currently selected quest index
+	questBoardFilter        screens.QuestFilter // Current quest filter
 
 	// Terminal dimensions - Updated on window resize
 	width  int // Terminal width in characters
 	height int // Terminal height in characters
 
 	// Status - Application state
-	loading bool   // True during async operations (load, save)
-	err     error  // Most recent error (if any)
+	loading bool  // True during async operations (load, save)
+	err     error // Most recent error (if any)
 
 	// Session Tracking - Timer integration
 	sessionTracker *watcher.SessionTracker // Session time tracker
@@ -85,7 +85,7 @@ type Model struct {
 	showingHelp bool // Whether the help overlay is currently displayed
 
 	// Notification system - Real-time event notifications
-	notifications      []Notification // Queue of pending notifications
+	notifications       []Notification // Queue of pending notifications
 	currentNotification *Notification  // Currently displayed notification (nil if none)
 }
 
@@ -141,8 +141,8 @@ func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
 		questBoardFilter:        screens.FilterAll,
 
 		// Dimensions - Will be set on first WindowSizeMsg
-		width:  80,  // Default width
-		height: 24,  // Default height
+		width:  80, // Default width
+		height: 24, // Default height
 
 		// Status
 		loading: true, // Start in loading state
@@ -155,7 +155,7 @@ func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
 		showingHelp: false,
 
 		// Notifications
-		notifications:      []Notification{},
+		notifications:       []Notification{},
 		currentNotification: nil,
 	}
 }

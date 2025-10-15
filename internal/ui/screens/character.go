@@ -560,7 +560,7 @@ func formatDate(t time.Time) string {
 	}
 
 	// If it's yesterday
-	if truncateToDay(now).Add(-24*time.Hour).Equal(truncateToDay(t)) {
+	if truncateToDay(now).Add(-24 * time.Hour).Equal(truncateToDay(t)) {
 		return "Yesterday"
 	}
 
@@ -596,7 +596,7 @@ func renderCharacterHeader(char *game.Character, width int) string {
 			Bold(true).
 			Border(lipgloss.RoundedBorder(), false, false, true, false).
 			BorderForeground(colorAccent).
-			Width(width - 4).
+			Width(width-4).
 			Padding(0, 1).
 			MarginBottom(1)
 		return style.Render("🎮 Character Sheet")
@@ -662,7 +662,7 @@ func renderCharacterHeader(char *game.Character, width int) string {
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), false, false, true, false).
 		BorderForeground(colorAccent).
-		Width(width - 4).
+		Width(width-4).
 		Padding(0, 1).
 		MarginBottom(1)
 

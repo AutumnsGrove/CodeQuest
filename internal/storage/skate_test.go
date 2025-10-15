@@ -155,9 +155,9 @@ func TestSkateClient_SaveCharacter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "character with special characters in name",
+			name:      "character with special characters in name",
 			character: game.NewCharacter("Test-Hero_123 with spaces"),
-			wantErr: false,
+			wantErr:   false,
 		},
 	}
 
@@ -194,11 +194,11 @@ func TestSkateClient_LoadCharacter(t *testing.T) {
 	client := &SkateClient{skatePath: skatePath}
 
 	tests := []struct {
-		name       string
-		setup      func() *game.Character
-		wantErr    bool
-		errMsg     string
-		validate   func(*testing.T, *game.Character, *game.Character)
+		name     string
+		setup    func() *game.Character
+		wantErr  bool
+		errMsg   string
+		validate func(*testing.T, *game.Character, *game.Character)
 	}{
 		{
 			name: "load non-existent character",

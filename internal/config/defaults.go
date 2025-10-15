@@ -14,10 +14,10 @@ func DefaultConfig() *Config {
 			Difficulty:      "normal", // easy, normal, hard
 		},
 		UI: UIConfig{
-			Theme:             "dark", // dark, light, auto
-			ShowAnimations:    true,
-			CompactMode:       false,
-			ShowKeybindHints:  true,
+			Theme:            "dark", // dark, light, auto
+			ShowAnimations:   true,
+			CompactMode:      false,
+			ShowKeybindHints: true,
 		},
 		Tracking: TrackingConfig{
 			SessionTimerEnabled: true,
@@ -26,19 +26,19 @@ func DefaultConfig() *Config {
 		},
 		AI: AIConfig{
 			Mentor: AIMentorConfig{
-				Provider:             "crush",
-				ModelComplex:         "openrouter/kimi/k2-0925",
-				ModelSimple:          "openrouter/deepseek/glm-4.5-air",
-				ModelComplexOffline:  "qwen3:30b",
-				ModelSimpleOffline:   "qwen3:4b",
-				Temperature:          0.7,
+				Provider:            "crush",
+				ModelComplex:        "openrouter/kimi/k2-0925",
+				ModelSimple:         "openrouter/deepseek/glm-4.5-air",
+				ModelComplexOffline: "qwen3:30b",
+				ModelSimpleOffline:  "qwen3:4b",
+				Temperature:         0.7,
 			},
 			Review: AIReviewConfig{
-				Provider:        "mods",
-				ModelPrimary:    "qwen3:30b",
-				ModelFallback:   "qwen3:4b",
-				AutoReview:      true,
-				BonusXPEnabled:  true,
+				Provider:       "mods",
+				ModelPrimary:   "qwen3:30b",
+				ModelFallback:  "qwen3:4b",
+				AutoReview:     true,
+				BonusXPEnabled: true,
 			},
 		},
 		Git: GitConfig{
@@ -54,9 +54,9 @@ func DefaultConfig() *Config {
 			GlobalTimer:        "ctrl+t",
 		},
 		Debug: DebugConfig{
-			Enabled:   false,
-			LogLevel:  "info", // debug, info, warn, error
-			LogFile:   "",     // empty means no file logging
+			Enabled:  false,
+			LogLevel: "info", // debug, info, warn, error
+			LogFile:  "",     // empty means no file logging
 		},
 	}
 }

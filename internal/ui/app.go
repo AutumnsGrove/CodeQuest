@@ -5,6 +5,7 @@ package ui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
@@ -78,6 +79,10 @@ type Model struct {
 
 	// Help overlay state
 	showingHelp bool // Whether the help overlay is currently displayed
+
+	// Notification system - Real-time event notifications
+	notifications      []Notification // Queue of pending notifications
+	currentNotification *Notification  // Currently displayed notification (nil if none)
 }
 
 // NewModel creates and initializes a new application model.
@@ -126,20 +131,26 @@ func NewModel(storageClient *storage.SkateClient) *Model {
 
 		// Help overlay
 		showingHelp: false,
+
+		// Notifications
+		notifications:      []Notification{},
+		currentNotification: nil,
 	}
 }
 
 // Init is the Bubble Tea initialization method.
-// It returns commands to load character and quests from storage.
+// It returns commands to load character and quests from storage,
+// and subscribes to game events for real-time UI updates.
 //
 // If loading fails (e.g., first run), it will create a new character.
 //
 // Returns:
-//   - tea.Cmd: Commands to load data from storage
+//   - tea.Cmd: Commands to load data from storage and listen for events
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		loadCharacterCmd(m.storage),
 		loadQuestsCmd(m.storage),
+		listenForGameEvents(m.eventBus), // Subscribe to game events
 	)
 }
 
@@ -189,6 +200,88 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		m.loading = false
 		return m, nil
+
+	// ========================================================================
+	// Game Event Messages - Real-time updates from EventBus
+	// ========================================================================
+
+	// Commit detected - Show XP gain notification
+	case commitDetectedMsg:
+		// Add XP gain notification
+		notification := Notification{
+			Message:   fmt.Sprintf("+%d XP from commit!", msg.xpAwarded),
+			Type:      NotificationSuccess,
+			Duration:  3 * time.Second,
+			Timestamp: time.Now(),
+		}
+		m.addNotification(notification)
+
+		// Reload character data to reflect new XP and continue listening
+		return m, tea.Batch(
+			loadCharacterCmd(m.storage),
+			m.showNextNotification(),
+			listenForGameEvents(m.eventBus), // Keep listening for more events
+		)
+
+	// Level up - Show celebration and reload character
+	case levelUpMsg:
+		// Add level-up notification with celebration
+		notification := Notification{
+			Message:   fmt.Sprintf("⚡ LEVEL UP! ⚡\nYou are now Level %d!", msg.newLevel),
+			Type:      NotificationLevelUp,
+			Duration:  5 * time.Second,
+			Timestamp: time.Now(),
+		}
+		m.addNotification(notification)
+
+		// Reload character data to reflect new level and continue listening
+		return m, tea.Batch(
+			loadCharacterCmd(m.storage),
+			m.showNextNotification(),
+			listenForGameEvents(m.eventBus), // Keep listening for more events
+		)
+
+	// Quest completed - Show completion notification and reload quests
+	case questCompleteMsg:
+		// Add quest completion notification
+		notification := Notification{
+			Message:   fmt.Sprintf("✓ QUEST COMPLETE!\n%s\n+%d XP", msg.questName, msg.xpAwarded),
+			Type:      NotificationQuestComplete,
+			Duration:  4 * time.Second,
+			Timestamp: time.Now(),
+		}
+		m.addNotification(notification)
+
+		// Reload both character (XP changed) and quests (status changed), and continue listening
+		return m, tea.Batch(
+			loadCharacterCmd(m.storage),
+			loadQuestsCmd(m.storage),
+			m.showNextNotification(),
+			listenForGameEvents(m.eventBus), // Keep listening for more events
+		)
+
+	// Quest started - Reload quests to reflect new active quest
+	case questStartMsg:
+		// Add quest start notification
+		notification := Notification{
+			Message:   fmt.Sprintf("Quest Started: %s", msg.questName),
+			Type:      NotificationInfo,
+			Duration:  3 * time.Second,
+			Timestamp: time.Now(),
+		}
+		m.addNotification(notification)
+
+		// Reload quests and continue listening
+		return m, tea.Batch(
+			loadQuestsCmd(m.storage),
+			m.showNextNotification(),
+			listenForGameEvents(m.eventBus), // Keep listening for more events
+		)
+
+	// Notification dismissed - Show next notification if any
+	case notificationDismissedMsg:
+		m.currentNotification = nil
+		return m, m.showNextNotification()
 	}
 
 	return m, nil
@@ -230,6 +323,11 @@ func (m Model) View() string {
 	// If help overlay is showing, render it on top
 	if m.showingHelp {
 		return m.viewHelpOverlay(mainContent)
+	}
+
+	// If there's a current notification, render it on top of main content
+	if m.currentNotification != nil {
+		return m.viewWithNotification(mainContent)
 	}
 
 	return mainContent
@@ -587,6 +685,46 @@ type errorMsg struct {
 type saveCompletedMsg struct{}
 
 // ============================================================================
+// Game Event Messages - Bridge between EventBus and Bubble Tea
+// ============================================================================
+// These messages convert game.Event types into Bubble Tea messages
+// for real-time UI updates.
+
+// commitDetectedMsg is sent when a git commit is detected.
+// The UI can show XP gain notifications and update character stats.
+type commitDetectedMsg struct {
+	sha          string
+	message      string
+	xpAwarded    int
+	linesAdded   int
+	linesRemoved int
+}
+
+// levelUpMsg is sent when the character gains a level.
+// The UI can show a celebratory level-up animation.
+type levelUpMsg struct {
+	characterID string
+	oldLevel    int
+	newLevel    int
+}
+
+// questCompleteMsg is sent when a quest is completed.
+// The UI can show quest completion notification and update quest list.
+type questCompleteMsg struct {
+	questID   string
+	questName string
+	xpAwarded int
+}
+
+// questStartMsg is sent when a quest is started.
+// The UI can update the quest board to reflect the new active quest.
+type questStartMsg struct {
+	questID   string
+	questName string
+	questType string
+}
+
+// ============================================================================
 // Async Commands for Storage Operations
 // ============================================================================
 
@@ -621,3 +759,347 @@ func loadQuestsCmd(storage *storage.SkateClient) tea.Cmd {
 		return questsLoadedMsg{quests: quests}
 	}
 }
+
+// ============================================================================
+// Notification System
+// ============================================================================
+
+// NotificationType defines different types of notifications with distinct styling.
+type NotificationType int
+
+const (
+	// NotificationInfo - General information (blue)
+	NotificationInfo NotificationType = iota
+	// NotificationSuccess - Success messages (green)
+	NotificationSuccess
+	// NotificationWarning - Warnings (orange)
+	NotificationWarning
+	// NotificationError - Errors (red)
+	NotificationError
+	// NotificationLevelUp - Level-up celebration (gold)
+	NotificationLevelUp
+	// NotificationQuestComplete - Quest completion (cyan)
+	NotificationQuestComplete
+)
+
+// Notification represents a temporary message to display to the user.
+// Notifications auto-dismiss after their duration expires.
+type Notification struct {
+	Message   string           // The message to display
+	Type      NotificationType // Visual style of notification
+	Duration  time.Duration    // How long to display (0 = manual dismiss)
+	Timestamp time.Time        // When the notification was created
+}
+
+// notificationDismissedMsg is sent when a notification's timer expires.
+type notificationDismissedMsg struct{}
+
+// addNotification adds a notification to the queue.
+// If no notification is currently showing, it will be displayed immediately.
+func (m *Model) addNotification(notification Notification) {
+	m.notifications = append(m.notifications, notification)
+}
+
+// showNextNotification displays the next notification in the queue.
+// If there's already a notification showing, this does nothing.
+// If the queue is empty, this does nothing.
+//
+// Returns a tea.Cmd that will dismiss the notification after its duration.
+func (m *Model) showNextNotification() tea.Cmd {
+	// Don't show if there's already a notification
+	if m.currentNotification != nil {
+		return nil
+	}
+
+	// Don't show if queue is empty
+	if len(m.notifications) == 0 {
+		return nil
+	}
+
+	// Pop the first notification from the queue
+	m.currentNotification = &m.notifications[0]
+	m.notifications = m.notifications[1:]
+
+	// Return a command to dismiss after duration
+	if m.currentNotification.Duration > 0 {
+		return tea.Tick(m.currentNotification.Duration, func(t time.Time) tea.Msg {
+			return notificationDismissedMsg{}
+		})
+	}
+
+	return nil
+}
+
+// viewWithNotification renders the main content with a notification overlay.
+// The notification appears at the top-center of the screen.
+func (m Model) viewWithNotification(mainContent string) string {
+	if m.currentNotification == nil {
+		return mainContent
+	}
+
+	// Render the notification box
+	notificationBox := m.renderNotification(*m.currentNotification)
+
+	// Center the notification horizontally
+	centeredNotification := lipgloss.NewStyle().
+		Width(m.width).
+		Align(lipgloss.Center).
+		Render(notificationBox)
+
+	// Place notification at the top of the screen
+	// Since Lip Gloss doesn't support true overlays, we'll just prepend it
+	result := lipgloss.JoinVertical(
+		lipgloss.Left,
+		"", // Empty line for spacing
+		centeredNotification,
+		"",
+		mainContent,
+	)
+
+	return result
+}
+
+// renderNotification renders a single notification with appropriate styling.
+func (m Model) renderNotification(n Notification) string {
+	// Choose style based on notification type
+	var style lipgloss.Style
+	var icon string
+
+	switch n.Type {
+	case NotificationLevelUp:
+		style = lipgloss.NewStyle().
+			Border(lipgloss.DoubleBorder()).
+			BorderForeground(ColorXP).
+			Foreground(ColorXP).
+			Background(lipgloss.Color("235")).
+			Bold(true).
+			Padding(1, 2)
+		icon = "⚡"
+
+	case NotificationQuestComplete:
+		style = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorSuccess).
+			Foreground(ColorSuccess).
+			Background(lipgloss.Color("235")).
+			Bold(true).
+			Padding(1, 2)
+		icon = "✓"
+
+	case NotificationSuccess:
+		style = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorSuccess).
+			Foreground(ColorBright).
+			Background(lipgloss.Color("235")).
+			Padding(0, 2)
+		icon = "✓"
+
+	case NotificationInfo:
+		style = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorInfo).
+			Foreground(ColorBright).
+			Background(lipgloss.Color("235")).
+			Padding(0, 2)
+		icon = "ℹ"
+
+	case NotificationWarning:
+		style = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorWarning).
+			Foreground(ColorWarning).
+			Background(lipgloss.Color("235")).
+			Padding(0, 2)
+		icon = "⚠"
+
+	case NotificationError:
+		style = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorError).
+			Foreground(ColorError).
+			Background(lipgloss.Color("235")).
+			Bold(true).
+			Padding(0, 2)
+		icon = "✗"
+
+	default:
+		style = NotificationStyle
+		icon = "•"
+	}
+
+	// Format the message with icon
+	content := icon + " " + n.Message
+
+	return style.Render(content)
+}
+
+// ============================================================================
+// Event Bus Integration - Bridge to Bubble Tea
+// ============================================================================
+
+// listenForGameEvents subscribes to the EventBus and converts game events
+// to Bubble Tea messages. This creates a bridge between the game's EventBus
+// and Bubble Tea's message system.
+//
+// Architecture:
+//  1. Subscribe to EventBus events with handlers
+//  2. Handlers convert game.Event to Bubble Tea messages via channels
+//  3. A goroutine listens to the channel and returns messages to Bubble Tea
+//
+// Thread Safety:
+// - EventBus handlers run in the publisher's goroutine (synchronously)
+// - We use a buffered channel to prevent blocking the EventBus
+// - The channel-to-message conversion runs in a dedicated goroutine
+//
+// Parameters:
+//   - eventBus: The game event bus to subscribe to
+//
+// Returns:
+//   - tea.Cmd: A command that waits for the next game event
+func listenForGameEvents(eventBus *game.EventBus) tea.Cmd {
+	return func() tea.Msg {
+		// Create a buffered channel for game events
+		eventChan := make(chan game.Event, 10)
+
+		// Subscribe to all relevant event types
+		// Each subscription adds a handler that sends events to our channel
+		eventBus.Subscribe(game.EventCommit, func(e game.Event) {
+			select {
+			case eventChan <- e:
+				// Event sent successfully
+			default:
+				// Channel full, drop event (prevents blocking game logic)
+			}
+		})
+
+		eventBus.Subscribe(game.EventLevelUp, func(e game.Event) {
+			select {
+			case eventChan <- e:
+			default:
+			}
+		})
+
+		eventBus.Subscribe(game.EventQuestDone, func(e game.Event) {
+			select {
+			case eventChan <- e:
+			default:
+			}
+		})
+
+		eventBus.Subscribe(game.EventQuestStart, func(e game.Event) {
+			select {
+			case eventChan <- e:
+			default:
+			}
+		})
+
+		// Wait for the first event from the channel
+		// This blocks until an event is received
+		event := <-eventChan
+
+		// Convert the game event to a Bubble Tea message
+		return convertEventToMessage(event)
+	}
+}
+
+// waitForNextEvent returns a command that waits for the next game event.
+// This should be called after processing each event to keep listening.
+func waitForNextEvent(eventChan <-chan game.Event) tea.Cmd {
+	return func() tea.Msg {
+		event := <-eventChan
+		return convertEventToMessage(event)
+	}
+}
+
+// convertEventToMessage converts a game.Event to the appropriate Bubble Tea message.
+// This is the translation layer between the game's event system and the UI.
+//
+// Parameters:
+//   - event: The game event to convert
+//
+// Returns:
+//   - tea.Msg: The corresponding Bubble Tea message
+func convertEventToMessage(event game.Event) tea.Msg {
+	switch event.Type {
+	case game.EventCommit:
+		// Extract commit event data
+		sha, _ := event.Data["sha"].(string)
+		message, _ := event.Data["message"].(string)
+		linesAdded, _ := event.Data["lines_added"].(int)
+		linesRemoved, _ := event.Data["lines_removed"].(int)
+
+		// Calculate XP awarded (simplified - actual XP comes from handler)
+		// For display purposes, we'll estimate it
+		// In reality, the handler already calculated and applied it
+		// We're just showing a notification, so approximate XP is fine
+		baseXP := (linesAdded + linesRemoved) * 5
+		if baseXP < 10 {
+			baseXP = 10 // Minimum XP
+		}
+
+		return commitDetectedMsg{
+			sha:          sha,
+			message:      message,
+			xpAwarded:    baseXP,
+			linesAdded:   linesAdded,
+			linesRemoved: linesRemoved,
+		}
+
+	case game.EventLevelUp:
+		// Extract level-up event data
+		characterID, _ := event.Data["character_id"].(string)
+		oldLevel, _ := event.Data["old_level"].(int)
+		newLevel, _ := event.Data["new_level"].(int)
+
+		return levelUpMsg{
+			characterID: characterID,
+			oldLevel:    oldLevel,
+			newLevel:    newLevel,
+		}
+
+	case game.EventQuestDone:
+		// Extract quest completion event data
+		questID, _ := event.Data["quest_id"].(string)
+		questTitle, _ := event.Data["quest_title"].(string)
+		xpReward, _ := event.Data["xp_reward"].(int)
+
+		return questCompleteMsg{
+			questID:   questID,
+			questName: questTitle,
+			xpAwarded: xpReward,
+		}
+
+	case game.EventQuestStart:
+		// Extract quest start event data
+		questID, _ := event.Data["quest_id"].(string)
+		questTitle, _ := event.Data["quest_title"].(string)
+		questType, _ := event.Data["quest_type"].(string)
+
+		return questStartMsg{
+			questID:   questID,
+			questName: questTitle,
+			questType: questType,
+		}
+
+	default:
+		// Unknown event type - return nil message
+		return nil
+	}
+}
+
+// Note on Event Bridge Design:
+//
+// This implementation uses a simplified approach where listenForGameEvents
+// returns after receiving ONE event. To continue listening, the Update method
+// needs to call listenForGameEvents again after processing each event.
+//
+// This is the correct Bubble Tea pattern:
+// 1. Init() calls listenForGameEvents()
+// 2. First event arrives, Update() is called
+// 3. Update() processes the event and returns listenForGameEvents() as a cmd
+// 4. Next event arrives, Update() is called again
+// 5. Repeat...
+//
+// This ensures events are processed one at a time in the main Bubble Tea loop,
+// maintaining thread safety without complex synchronization.

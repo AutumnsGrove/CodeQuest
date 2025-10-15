@@ -16,6 +16,7 @@ import (
 	"github.com/AutumnsGrove/codequest/internal/game"
 	"github.com/AutumnsGrove/codequest/internal/storage"
 	"github.com/AutumnsGrove/codequest/internal/ui/screens"
+	"github.com/AutumnsGrove/codequest/internal/watcher"
 )
 
 // Screen represents different application screens/views.
@@ -77,8 +78,8 @@ type Model struct {
 	loading bool   // True during async operations (load, save)
 	err     error  // Most recent error (if any)
 
-	// Timer state - Session timer (stub for now)
-	timerRunning bool // Whether the session timer is active
+	// Session Tracking - Timer integration
+	sessionTracker *watcher.SessionTracker // Session time tracker
 
 	// Help overlay state
 	showingHelp bool // Whether the help overlay is currently displayed
@@ -110,6 +111,13 @@ func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
 		mentorScreen = screens.NewMentorScreen(aiManager, 80, 24)
 	}
 
+	// Create a temporary character for SessionTracker initialization
+	// The real character will be loaded in Init()
+	tempChar := game.NewCharacter("Loading...")
+
+	// Initialize SessionTracker (will be updated with real character in Init)
+	sessionTracker := watcher.NewSessionTracker(tempChar, storageClient)
+
 	return &Model{
 		// Game State - Will be loaded in Init()
 		character: nil,
@@ -140,8 +148,8 @@ func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
 		loading: true, // Start in loading state
 		err:     nil,
 
-		// Timer
-		timerRunning: false,
+		// Session Tracking
+		sessionTracker: sessionTracker,
 
 		// Help overlay
 		showingHelp: false,
@@ -177,6 +185,16 @@ func initializeAIManager(cfg *config.Config) *ai.AIManager {
 	return manager
 }
 
+// timerTickMsg is sent every second to update the timer display.
+type timerTickMsg time.Time
+
+// timerTick returns a command that sends a timerTickMsg after 1 second.
+func timerTick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return timerTickMsg(t)
+	})
+}
+
 // Init is the Bubble Tea initialization method.
 // It returns commands to load character and quests from storage,
 // and subscribes to game events for real-time UI updates.
@@ -189,8 +207,9 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		loadCharacterCmd(m.storage),
 		loadQuestsCmd(m.storage),
-		screens.LoadChatHistory(),           // Load chat history for mentor screen
-		listenForGameEvents(m.eventBus),     // Subscribe to game events
+		screens.LoadChatHistory(),       // Load chat history for mentor screen
+		listenForGameEvents(m.eventBus), // Subscribe to game events
+		timerTick(),                     // Start timer ticks
 	)
 }
 
@@ -232,6 +251,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case characterLoadedMsg:
 		m.character = msg.character
 		m.loading = false
+		// Update SessionTracker with real character
+		if m.sessionTracker != nil && m.character != nil {
+			m.sessionTracker = watcher.NewSessionTracker(m.character, m.storage)
+		}
 		return m, nil
 
 	// Quests loaded from storage
@@ -243,6 +266,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errorMsg:
 		m.err = msg.err
 		m.loading = false
+		return m, nil
+
+	// Timer tick - Request next tick if timer is running
+	case timerTickMsg:
+		if m.sessionTracker != nil && m.sessionTracker.GetState() == watcher.SessionRunning {
+			return m, timerTick()
+		}
 		return m, nil
 
 	// ========================================================================
@@ -364,6 +394,9 @@ func (m Model) View() string {
 		mainContent = "Unknown screen"
 	}
 
+	// Add timer to footer
+	mainContent = m.addTimerFooter(mainContent)
+
 	// If help overlay is showing, render it on top
 	if m.showingHelp {
 		return m.viewHelpOverlay(mainContent)
@@ -419,8 +452,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Global timer toggle (Ctrl+T)
 	if key.Matches(msg, m.keys.GlobalTimer) {
-		m.timerRunning = !m.timerRunning
-		return m, nil
+		return m.toggleTimer()
 	}
 
 	// Global navigation (Alt+ modifiers - work from any screen)
@@ -567,6 +599,69 @@ func (m Model) handleQuestBoardKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// toggleTimer handles the Ctrl+T hotkey to pause/resume the session timer.
+// This implements the state machine: stopped -> running -> paused -> running.
+//
+// Returns:
+//   - tea.Model: Updated model
+//   - tea.Cmd: Timer tick command if starting/resuming, nil otherwise
+func (m Model) toggleTimer() (tea.Model, tea.Cmd) {
+	if m.sessionTracker == nil {
+		return m, nil
+	}
+
+	state := m.sessionTracker.GetState()
+
+	switch state {
+	case watcher.SessionStopped:
+		// Start new session
+		if err := m.sessionTracker.Start(); err != nil {
+			// Show error notification
+			notification := Notification{
+				Message:   fmt.Sprintf("Failed to start timer: %v", err),
+				Type:      NotificationError,
+				Duration:  3 * time.Second,
+				Timestamp: time.Now(),
+			}
+			m.addNotification(notification)
+			return m, m.showNextNotification()
+		}
+		return m, timerTick()
+
+	case watcher.SessionRunning:
+		// Pause session
+		if err := m.sessionTracker.Pause(); err != nil {
+			// Show error notification
+			notification := Notification{
+				Message:   fmt.Sprintf("Failed to pause timer: %v", err),
+				Type:      NotificationError,
+				Duration:  3 * time.Second,
+				Timestamp: time.Now(),
+			}
+			m.addNotification(notification)
+			return m, m.showNextNotification()
+		}
+		return m, nil
+
+	case watcher.SessionPaused:
+		// Resume session
+		if err := m.sessionTracker.Resume(); err != nil {
+			// Show error notification
+			notification := Notification{
+				Message:   fmt.Sprintf("Failed to resume timer: %v", err),
+				Type:      NotificationError,
+				Duration:  3 * time.Second,
+				Timestamp: time.Now(),
+			}
+			m.addNotification(notification)
+			return m, m.showNextNotification()
+		}
+		return m, timerTick()
+	}
+
+	return m, nil
+}
+
 // getFilteredQuests returns quests filtered by the current filter.
 func (m Model) getFilteredQuests() []*game.Quest {
 	if m.questBoardFilter == screens.FilterAll {
@@ -617,6 +712,66 @@ func (m Model) saveStateCmd() tea.Cmd {
 // ============================================================================
 // These will be enhanced by later subagents (15-21) with detailed screens.
 // For now, they return simple placeholder text to verify routing works.
+
+// addTimerFooter adds the session timer display to the footer of the screen.
+// The timer shows elapsed time and running/paused state.
+//
+// Parameters:
+//   - content: The main screen content
+//
+// Returns:
+//   - string: Content with timer footer appended
+func (m Model) addTimerFooter(content string) string {
+	// Don't show timer if width is too small (mobile/narrow terminals)
+	if m.width < 40 || m.sessionTracker == nil {
+		return content
+	}
+
+	// Get timer state
+	elapsed := m.sessionTracker.GetElapsed()
+	isRunning := m.sessionTracker.GetState() == watcher.SessionRunning
+
+	// Format timer display
+	icon := "⏸" // Paused/stopped
+	if isRunning {
+		icon = "🔴" // Running
+	}
+
+	// Get color based on duration
+	color := ColorDim // Default for short sessions
+	hours := elapsed.Hours()
+	if hours >= 5.0 {
+		color = ColorWarning // Orange for 5+ hours
+	} else if hours >= 3.0 {
+		color = ColorSuccess // Green for 3-5 hours
+	} else if hours >= 1.0 {
+		color = ColorInfo // Cyan for 1-3 hours
+	}
+
+	timerStyle := lipgloss.NewStyle().
+		Foreground(color).
+		Bold(true)
+
+	timeStr := m.sessionTracker.FormatElapsed()
+	timerDisplay := timerStyle.Render(icon + " " + timeStr)
+
+	// Create footer with timer and help hint
+	helpHint := MutedTextStyle.Render("  |  Press ? for help  |  Ctrl+T to pause/resume timer")
+
+	footer := lipgloss.NewStyle().
+		Width(m.width).
+		Align(lipgloss.Left).
+		Foreground(ColorDim).
+		Render(timerDisplay + helpHint)
+
+	// Combine content and footer
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		content,
+		"",
+		footer,
+	)
+}
 
 // viewLoading renders the loading screen.
 func (m Model) viewLoading() string {
@@ -917,6 +1072,14 @@ func (m *Model) showNextNotification() tea.Cmd {
 	}
 
 	return nil
+}
+
+// Cleanup performs cleanup when the app exits.
+// This ensures the session timer is properly stopped and state is saved.
+func (m Model) Cleanup() {
+	if m.sessionTracker != nil {
+		m.sessionTracker.Stop() // Saves final state
+	}
 }
 
 // viewWithNotification renders the main content with a notification overlay.

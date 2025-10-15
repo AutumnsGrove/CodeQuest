@@ -6,8 +6,19 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/AutumnsGrove/codequest/internal/ui"
 	"github.com/charmbracelet/lipgloss"
+)
+
+// Color constants (duplicated here to avoid import cycle with ui package)
+var (
+	modalColorPrimary = lipgloss.Color("205") // Pink/Magenta
+	modalColorAccent  = lipgloss.Color("86")  // Cyan
+	modalColorSuccess = lipgloss.Color("42")  // Green
+	modalColorWarning = lipgloss.Color("214") // Orange
+	modalColorError   = lipgloss.Color("196") // Red
+	modalColorInfo    = lipgloss.Color("69")  // Blue
+	modalColorDim     = lipgloss.Color("240") // Gray
+	modalColorBright  = lipgloss.Color("15")  // White
 )
 
 // ModalType defines the type of modal dialog to display
@@ -170,7 +181,7 @@ func renderModalContent(content string, width, height int) string {
 
 	// Style the content
 	contentStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorBright).
+		Foreground(modalColorBright).
 		Width(width - 6).
 		Align(lipgloss.Left)
 
@@ -201,11 +212,11 @@ func renderModalFooter(modalType ModalType, width int) string {
 	// Create separator line
 	separator := strings.Repeat("─", width-4)
 	separatorStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorDim)
+		Foreground(modalColorDim)
 
 	// Style the action hint
 	hintStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorAccent).
+		Foreground(modalColorAccent).
 		Bold(true).
 		Width(width - 4).
 		Align(lipgloss.Center)
@@ -256,7 +267,7 @@ func renderModalWithBackdrop(modal string, termWidth, termHeight int) string {
 	// Add backdrop effect with dimmed background indication
 	backdropLine := strings.Repeat("░", termWidth)
 	backdropStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorDim).
+		Foreground(modalColorDim).
 		Faint(true)
 
 	// Build backdrop with modal centered
@@ -291,17 +302,17 @@ func renderModalWithBackdrop(modal string, termWidth, termHeight int) string {
 func getModalColor(modalType ModalType) lipgloss.Color {
 	switch modalType {
 	case ModalInfo:
-		return ui.ColorInfo
+		return modalColorInfo
 	case ModalSuccess:
-		return ui.ColorSuccess
+		return modalColorSuccess
 	case ModalWarning:
-		return ui.ColorWarning
+		return modalColorWarning
 	case ModalError:
-		return ui.ColorError
+		return modalColorError
 	case ModalConfirmation:
-		return ui.ColorAccent
+		return modalColorAccent
 	default:
-		return ui.ColorPrimary
+		return modalColorPrimary
 	}
 }
 

@@ -6,9 +6,19 @@ import (
 	"fmt"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/AutumnsGrove/codequest/internal/ui"
+	"github.com/AutumnsGrove/codequest/internal/watcher"
+)
+
+// Color constants (duplicated here to avoid import cycle with ui package)
+var (
+	colorAccent  = lipgloss.Color("86")  // Cyan
+	colorSuccess = lipgloss.Color("42")  // Green
+	colorWarning = lipgloss.Color("214") // Orange
+	colorInfo    = lipgloss.Color("69")  // Blue
+	colorDim     = lipgloss.Color("240") // Gray
 )
 
 // Timer display modes for different contexts
@@ -154,7 +164,7 @@ func renderTimerCard(duration time.Duration, isRunning bool, width int) string {
 
 	// Create the title
 	titleStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorAccent).
+		Foreground(colorAccent).
 		Bold(true)
 	title := titleStyle.Render(icon + " Session Timer")
 
@@ -167,7 +177,7 @@ func renderTimerCard(duration time.Duration, isRunning bool, width int) string {
 
 	// Create the hint based on state
 	hintStyle := lipgloss.NewStyle().
-		Foreground(ui.ColorDim).
+		Foreground(colorDim).
 		Italic(true).
 		Align(lipgloss.Center)
 
@@ -182,7 +192,7 @@ func renderTimerCard(duration time.Duration, isRunning bool, width int) string {
 	var breakReminder string
 	if duration >= 5*time.Hour {
 		breakStyle := lipgloss.NewStyle().
-			Foreground(ui.ColorWarning).
+			Foreground(colorWarning).
 			Bold(true).
 			Align(lipgloss.Center)
 		breakReminder = "\n" + breakStyle.Render("⚠ Take a break!")
@@ -192,9 +202,9 @@ func renderTimerCard(duration time.Duration, isRunning bool, width int) string {
 	content := title + "\n\n" + timeDisplay + "\n\n" + hint + breakReminder
 
 	// Wrap in a box with appropriate border color
-	borderColor := ui.ColorAccent
+	borderColor := colorAccent
 	if isRunning {
-		borderColor = ui.ColorSuccess // Green border when running
+		borderColor = colorSuccess // Green border when running
 	}
 
 	boxStyle := lipgloss.NewStyle().
@@ -261,13 +271,13 @@ func getTimerColor(d time.Duration) lipgloss.Color {
 
 	switch {
 	case hours >= 5.0:
-		return ui.ColorWarning // 5+ hours: Orange (take a break!)
+		return colorWarning // 5+ hours: Orange (take a break!)
 	case hours >= 3.0:
-		return ui.ColorSuccess // 3-5 hours: Green (great session)
+		return colorSuccess // 3-5 hours: Green (great session)
 	case hours >= 1.0:
-		return ui.ColorInfo // 1-3 hours: Cyan (good work)
+		return colorInfo // 1-3 hours: Cyan (good work)
 	default:
-		return ui.ColorDim // 0-1 hour: Gray (warming up)
+		return colorDim // 0-1 hour: Gray (warming up)
 	}
 }
 
@@ -363,4 +373,119 @@ func FormatSessionSummary(duration time.Duration) string {
 	}
 
 	return fmt.Sprintf("You coded for %d hours and %d minutes.", hours, minutes)
+}
+
+// ============================================================================
+// Bubble Tea Timer Component
+// ============================================================================
+
+// Timer is a Bubble Tea component that displays session time and integrates
+// with SessionTracker for live updates.
+type Timer struct {
+	tracker   *watcher.SessionTracker // SessionTracker for elapsed time
+	elapsed   time.Duration           // Cached elapsed time
+	isRunning bool                    // Whether timer is currently running
+	width     int                     // Available width for display
+}
+
+// timerTickMsg is sent every second to update the timer display.
+type timerTickMsg time.Time
+
+// TimerTickMsg is the exported version of timerTickMsg for external use.
+type TimerTickMsg time.Time
+
+// NewTimer creates a new Timer component connected to SessionTracker.
+//
+// Parameters:
+//   - tracker: The SessionTracker to use for time data (required)
+//
+// Returns:
+//   - Timer: Initialized timer component
+func NewTimer(tracker *watcher.SessionTracker) Timer {
+	return Timer{
+		tracker:   tracker,
+		elapsed:   tracker.GetElapsed(),
+		isRunning: tracker.GetState() == watcher.SessionRunning,
+		width:     80, // Default width
+	}
+}
+
+// Update handles Bubble Tea messages for the timer component.
+// Responds to timerTickMsg to update elapsed time display.
+//
+// Parameters:
+//   - msg: The Bubble Tea message
+//
+// Returns:
+//   - Timer: Updated timer component
+//   - tea.Cmd: Command to schedule next tick (if running)
+func (t Timer) Update(msg tea.Msg) (Timer, tea.Cmd) {
+	switch msg.(type) {
+	case timerTickMsg, TimerTickMsg:
+		// Update elapsed time from tracker
+		t.elapsed = t.tracker.GetElapsed()
+		t.isRunning = t.tracker.GetState() == watcher.SessionRunning
+
+		// Request next tick if still running
+		if t.isRunning {
+			return t, timerTick()
+		}
+	}
+
+	return t, nil
+}
+
+// View renders the timer in inline mode (suitable for footers/headers).
+// Uses the RenderInlineTimer function for consistent styling.
+//
+// Returns:
+//   - string: Rendered timer display
+func (t Timer) View() string {
+	return RenderInlineTimer(t.elapsed, t.isRunning)
+}
+
+// SetWidth updates the available width for the timer display.
+// This is used for responsive layout adjustments.
+//
+// Parameters:
+//   - width: Available width in characters
+func (t *Timer) SetWidth(width int) {
+	t.width = width
+}
+
+// GetElapsed returns the current elapsed time.
+// This is useful for displaying formatted time elsewhere.
+//
+// Returns:
+//   - time.Duration: Current elapsed session time
+func (t Timer) GetElapsed() time.Duration {
+	return t.elapsed
+}
+
+// IsRunning returns whether the timer is currently running.
+//
+// Returns:
+//   - bool: true if timer is actively running
+func (t Timer) IsRunning() bool {
+	return t.isRunning
+}
+
+// timerTick returns a Bubble Tea command that sends a TimerTickMsg
+// after 1 second. This creates the timer update loop.
+//
+// Returns:
+//   - tea.Cmd: Command to schedule next tick
+func timerTick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return TimerTickMsg(t)
+	})
+}
+
+// TimerTick is the exported version of timerTick for starting the timer
+// from the main app initialization.
+//
+// Returns:
+//   - tea.Cmd: Command to schedule first tick
+func TimerTick() tea.Cmd {
+	return timerTick()
 }

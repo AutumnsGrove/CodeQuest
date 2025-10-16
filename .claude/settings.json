@@ -1,11 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "web_search",
-      "web_fetch",
-      "create_file",
-      "str_replace",
-      "view",
+      "Web_search",
+      "Web_fetch",
+      "Create_file",
+      "Str_replace",
+      "View",
       "Bash(git status:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",

@@ -11,6 +11,12 @@ This document provides comprehensive guidance for Claude Code (or any AI assista
 - Beautiful TUI powered by Bubble Tea, Lip Gloss, and Bubbles
 - AI-powered mentorship through Crush, Mods, and Claude Code
 
+**Current Status (October 2025):**
+- ✅ All core internal packages implemented and tested (>80% coverage)
+- ✅ Character system, quests, XP engine, storage, UI components, Git watcher, session tracking
+- 🚧 Final integration in progress (wiring main.go to launch Bubble Tea app)
+- 📍 See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for detailed progress
+
 **Primary Goals:**
 1. Educational - Learn Go through building a real application
 2. Practical - Create a genuinely helpful developer tool
@@ -48,7 +54,7 @@ import (
 
     "github.com/charmbracelet/bubbletea"
 
-    "github.com/yourusername/codequest/internal/storage"
+    "github.com/AutumnsGrove/codequest/internal/storage"
 )
 
 // Document all exported types and functions
@@ -172,30 +178,72 @@ func renderTitle(text string) string {
 ## AI Integration Guidelines
 
 ### Provider Hierarchy
-1. **Crush (Primary)** - In-game mentor, quick help
-2. **Mods (Local)** - Code review, offline fallback
-3. **Claude Code** - Complex tasks, quest generation
+CodeQuest uses a fallback chain of AI providers for robust mentorship:
+
+1. **Crush (OpenRouter)** - Online models via OpenRouter API
+   - Primary for in-game mentor and quick help
+   - Models: `openrouter/kimi/k2-0925`, `openrouter/deepseek/glm-4.5-air`
+   - Requires API key stored in Skate: `codequest.openrouter_api_key`
+
+2. **Mods (Local LLM)** - Offline local models
+   - Fallback for code review and offline assistance
+   - Models: `qwen3:30b` (complex), `qwen3:4b` (simple)
+   - Requires Mods CLI installed via Homebrew
+
+3. **Claude (Anthropic API)** - Claude models for complex tasks
+   - Final fallback for advanced queries and quest generation
+   - Models: `claude-sonnet-4-5-20250929`, `claude-haiku-4-5-20251001`
+   - Requires API key stored in Skate: `codequest.anthropic_api_key`
 
 ### Implementation Pattern
 ```go
-// Define provider interface
+// Provider interface implemented by all AI backends
 type AIProvider interface {
-    Ask(question string, complexity string) (string, error)
+    Query(request Request) (Response, error)
     IsAvailable() bool
+    Name() string
 }
 
-// Implement fallback chain
-func (ai *AIManager) Query(prompt string) (string, error) {
-    for _, provider := range ai.providers {
-        if provider.IsAvailable() {
-            response, err := provider.Ask(prompt)
-            if err == nil {
-                return response, nil
-            }
-        }
-    }
-    return "", fmt.Errorf("no AI providers available")
+// AIManager orchestrates provider fallback chain
+type AIManager struct {
+    providers []AIProvider
+    config    *config.AIConfig
 }
+
+// Query attempts each provider in order until one succeeds
+func (ai *AIManager) Query(request Request) (Response, error) {
+    for _, provider := range ai.providers {
+        if !provider.IsAvailable() {
+            continue
+        }
+
+        response, err := provider.Query(request)
+        if err == nil {
+            return response, nil
+        }
+        // Log error and try next provider
+    }
+    return Response{}, ErrNoProvidersAvailable
+}
+```
+
+### Configuration Structure
+```toml
+# Config stored at ~/.config/codequest/config.toml
+[ai.mentor]
+provider = "crush"  # or "mods", "claude"
+model_complex = "openrouter/kimi/k2-0925"
+model_simple = "openrouter/deepseek/glm-4.5-air"
+model_complex_offline = "qwen3:30b"
+model_simple_offline = "qwen3:4b"
+temperature = 0.7
+
+[ai.review]
+provider = "mods"
+model_primary = "qwen3:30b"
+model_fallback = "qwen3:4b"
+auto_review = true
+bonus_xp_enabled = true
 ```
 
 ### Rate Limiting
@@ -260,25 +308,33 @@ git commit -m "refactor: Extract quest validation logic"
 
 ## Development Workflow
 
-### Phase-Based Implementation
+### Current Phase: MVP Integration (Week 4)
 
-#### MVP (Weeks 1-3)
-Focus on core functionality:
-1. Character system with XP/levels
-2. Basic quest types (commits, lines)
-3. Simple TUI with dashboard
-4. Git watcher for commits
-5. Data persistence with Skate
-6. Basic AI mentor
+**Completed (Weeks 1-3):**
+- ✅ Character system with XP/levels (`internal/game/character.go`)
+- ✅ Quest system with lifecycle (`internal/game/quest.go`)
+- ✅ XP engine with balanced progression (`internal/game/engine.go`)
+- ✅ Event bus for pub/sub (`internal/game/events.go`)
+- ✅ Skate storage wrapper (`internal/storage/skate.go`)
+- ✅ Git watcher and integration (`internal/watcher/git.go`, `integration.go`)
+- ✅ Session tracking (`internal/watcher/session.go`)
+- ✅ UI components and screens (`internal/ui/`)
+- ✅ AI provider interfaces (`internal/ai/`)
+- ✅ Comprehensive test suite (>80% coverage on core packages)
 
-#### Enhancement Phases (Weeks 4-12)
-Add features incrementally:
-- Phase 2: Enhanced quests
-- Phase 3: Skills & achievements
-- Phase 4: Advanced UI
-- Phase 5: AI integration
-- Phase 6: External integrations
-- Phase 7: Polish & documentation
+**Current Focus:**
+- 🚧 Wire `cmd/codequest/main.go` to initialize and launch Bubble Tea app
+- 🚧 Connect all components: Config → Storage → EventBus → UI → Watchers
+- 🚧 End-to-end integration testing
+- 🚧 User documentation and setup guides
+
+**Next: Post-MVP Enhancement Phases**
+- Phase 2: Advanced quest types (tests, PR, refactoring)
+- Phase 3: Skill tree and achievement systems
+- Phase 4: Enhanced UI with animations
+- Phase 5: AI-generated quests and code review
+- Phase 6: External integrations (GitHub, WakaTime)
+- Phase 7: Polish, optimization, and extended documentation
 
 ### Testing During Development
 ```bash
@@ -309,6 +365,58 @@ make install
 # Clean build artifacts
 make clean
 ```
+
+## Application Architecture
+
+### Current Implementation Status
+
+**Implemented Packages:**
+```
+internal/
+├── config/      ✅ Configuration management (TOML + Skate)
+├── game/        ✅ Core game logic (character, quests, XP, events)
+├── storage/     ✅ Data persistence (Skate wrapper)
+├── watcher/     ✅ Git monitoring & session tracking
+├── ai/          ✅ AI provider interfaces (Crush, Mods, Claude)
+└── ui/          ✅ Bubble Tea TUI (screens + components)
+```
+
+**Integration Needed:**
+```go
+// cmd/codequest/main.go needs to:
+// 1. Load configuration
+cfg, err := config.Load()
+
+// 2. Initialize storage client
+storage, err := storage.NewSkateClient()
+
+// 3. Create event bus
+eventBus := game.NewEventBus()
+
+// 4. Initialize UI model
+model := ui.NewModel(storage, cfg)
+
+// 5. Start Git watcher
+watcher := watcher.NewWatcherManager(eventBus)
+watcher.AddRepository(cfg.Git.WatchPaths...)
+
+// 6. Register game event handlers
+engine := game.NewGameEngine(character, quests, storage)
+engine.RegisterHandlers(eventBus)
+
+// 7. Launch Bubble Tea program
+program := tea.NewProgram(model, tea.WithAltScreen())
+program.Run()
+```
+
+### Key Integration Points
+
+1. **Config → Everything**: All components need config for initialization
+2. **Storage → Character/Quests**: Load/save game state
+3. **EventBus → UI**: Real-time updates on commits, level-ups, quest completion
+4. **GitWatcher → EventBus**: Publishes commit events
+5. **GameEngine → EventBus**: Subscribes to events, updates character/quests
+6. **UI → Storage**: Periodic saves and manual save commands
 
 ## Common Tasks
 
@@ -449,19 +557,51 @@ Before committing:
 - [ ] Commit message follows style guide
 - [ ] No API keys or secrets
 
+## Technical Requirements
+
+### Go Version
+- **Development:** Go 1.25.1 (current as of October 2025)
+- **Minimum:** Go 1.21+ for users
+- **Module:** `github.com/AutumnsGrove/codequest`
+
+### Key Dependencies
+```go
+// Core Charmbracelet TUI stack
+github.com/charmbracelet/bubbletea  v1.3.10   // TUI framework
+github.com/charmbracelet/lipgloss   v1.1.0    // Styling
+github.com/charmbracelet/bubbles    v0.21.0   // Components
+
+// Configuration and storage
+github.com/BurntSushi/toml          v1.5.0    // Config parsing
+// Skate CLI (installed separately via Homebrew)
+
+// Git operations and file watching
+github.com/go-git/go-git/v5         v5.16.3   // Git operations
+github.com/fsnotify/fsnotify        v1.9.0    // File watching
+
+// Utilities
+github.com/google/uuid              v1.6.0    // UUID generation
+```
+
+### External Tools Required
+- **Skate** (data persistence): `brew install charmbracelet/tap/skate`
+- **Mods** (optional, local AI): `brew install charmbracelet/tap/mods`
+
 ## Resource Links
 
 ### Essential Documentation
 - [Bubble Tea Tutorial](https://github.com/charmbracelet/bubbletea/tree/master/tutorials)
 - [Lip Gloss Guide](https://github.com/charmbracelet/lipgloss)
+- [Bubbles Components](https://github.com/charmbracelet/bubbles)
 - [Go Effective Go](https://go.dev/doc/effective_go)
 - [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 
-### Project Resources
-- Specification: `CODEQUEST_SPEC.md`
-- Commit Style: `GIT_COMMIT_STYLE_GUIDE.md`
-- Architecture: `docs/ARCHITECTURE.md` (to be created)
-- Roadmap: `docs/ROADMAP.md` (to be created)
+### Project Documentation
+- **README.md** - User-facing documentation and setup guide
+- **CODEQUEST_SPEC.md** - Complete technical specification and design
+- **GIT_COMMIT_STYLE_GUIDE.md** - Mandatory commit message format
+- **DEVELOPMENT_STATUS.md** - Current progress and subagent completion status
+- **CLAUDE.md** - This file - AI development guide
 
 ## AI Assistant Reminders
 
@@ -477,6 +617,36 @@ When working on CodeQuest:
 9. **Optimize wisely** - Profile first, optimize second
 10. **Enjoy the journey** - This is about learning!
 
+## Next Development Phase: Main Application Wiring
+
+**Priority Task:** Implement `cmd/codequest/main.go` to launch the full application.
+
+**Key Steps:**
+1. Initialize configuration (create default if missing)
+2. Set up error handling and graceful shutdown
+3. Initialize Skate storage client (handle missing Skate gracefully)
+4. Load or create character
+5. Create event bus and register handlers
+6. Start Git watcher with configured paths
+7. Initialize session tracker
+8. Create and start Bubble Tea UI
+9. Handle cleanup on exit (save state, stop watchers)
+
+**Important Considerations:**
+- Graceful degradation if Skate not installed (show helpful error)
+- Handle missing config file (auto-create with defaults)
+- Proper cleanup on Ctrl+C (save character, stop watchers)
+- Connect EventBus to both UI and game logic
+- Ensure all goroutines are properly managed and stopped
+
+**Testing Strategy:**
+- Manual testing of full application flow
+- Integration tests for component initialization
+- Test graceful shutdown behavior
+- Verify data persistence across restarts
+
 ---
 
 *Remember: CodeQuest is not just a project, it's a learning adventure. Every line of code should teach something about Go, every feature should delight the user, and every commit should follow our standards.*
+
+*Current Status: All internal packages complete. Final integration to make it all come together!* 🚀

@@ -4,6 +4,8 @@
 
 CodeQuest is a terminal-based gamified developer productivity tool that turns your Git commits into XP, your coding sessions into quests, and your progress into an RPG character journey. Built with Go and the beautiful Charmbracelet ecosystem.
 
+**⚠️ STATUS: IN DEVELOPMENT** - Core systems implemented, main application wiring in progress. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for details.
+
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/AutumnsGrove/codequest)
 [![Go Version](https://img.shields.io/badge/go-1.21+-blue)](https://go.dev)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -55,7 +57,9 @@ go install github.com/AutumnsGrove/codequest/cmd/codequest@latest
 
 ### First Run
 
-When you launch CodeQuest for the first time:
+**Note:** The application is currently being wired up. The binary builds successfully, but the interactive TUI is not yet launched. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for implementation progress.
+
+When the application is complete, launching CodeQuest will:
 
 1. **Create Your Character** - Choose your name
 2. **Accept a Quest** - Browse the Quest Board (press `Q`)
@@ -63,8 +67,8 @@ When you launch CodeQuest for the first time:
 4. **Watch Your Progress** - Earn XP and level up!
 
 ```bash
-# Example workflow
-codequest                    # Launch the game
+# Planned workflow (not yet functional)
+codequest                    # Will launch the game (currently shows placeholder)
 
 # In another terminal, work on your project
 cd ~/projects/my-project
@@ -87,19 +91,29 @@ name = "YourName"
 [game]
 difficulty = "normal"  # easy, normal, hard
 
-[tracking]
-repository_paths = ["~/projects"]  # Directories to watch for commits
+[git]
+auto_detect_repos = true
+watch_paths = ["~/projects"]  # Directories to watch for commits
 
-[ai]
-providers = ["crush", "mods"]  # AI providers to use
-rate_limit = 20                # Requests per minute
+[ai.mentor]
+provider = "crush"
+model_complex = "openrouter/kimi/k2-0925"
+model_simple = "openrouter/deepseek/glm-4.5-air"
+temperature = 0.7
+
+[ai.review]
+provider = "mods"
+model_primary = "qwen3:30b"
+auto_review = true
 ```
 
 ### AI Provider Setup
 
-#### Crush (OpenRouter)
+CodeQuest supports three AI providers with automatic fallback: **Crush** (OpenRouter) → **Mods** (Local) → **Claude** (Anthropic API).
 
-Crush provides access to online AI models for in-game mentorship:
+#### Crush (OpenRouter) - Online Models
+
+Crush provides access to various online AI models:
 
 ```bash
 # Store API key securely in Skate (never in plaintext)
@@ -108,9 +122,23 @@ skate set codequest.openrouter_api_key "YOUR_API_KEY_HERE"
 
 Get your key at [openrouter.ai/keys](https://openrouter.ai/keys)
 
-#### Mods (Local LLM)
+**Example models in config:**
+```toml
+[ai.mentor]
+provider = "crush"
+model_complex = "openrouter/kimi/k2-0925"           # For complex queries
+model_simple = "openrouter/deepseek/glm-4.5-air"    # For quick questions
+temperature = 0.7
 
-For offline AI assistance or code review:
+# Other OpenRouter model options:
+# - "openrouter/anthropic/claude-3.5-sonnet"
+# - "openrouter/openai/gpt-4-turbo"
+# - "openrouter/google/gemini-pro"
+```
+
+#### Mods (Local LLM) - Offline Models
+
+For offline AI assistance with locally-run models:
 
 ```bash
 # Install Mods
@@ -120,11 +148,50 @@ brew install charmbracelet/tap/mods
 mods --settings
 ```
 
+**Example models in config:**
+```toml
+[ai.mentor]
+provider = "mods"
+model_complex_offline = "qwen3:30b"    # Larger model for deep analysis
+model_simple_offline = "qwen3:4b"      # Smaller model for quick help
+
+# Other local model options (if installed via Ollama):
+# - "llama3.1:70b"
+# - "codellama:34b"
+# - "mistral:7b"
+# - "deepseek-coder:33b"
+```
+
+#### Claude (Anthropic API) - Fallback
+
+For Claude Code integration and complex tasks:
+
+```bash
+# Store API key securely in Skate
+skate set codequest.anthropic_api_key "YOUR_API_KEY_HERE"
+```
+
+Get your key at [console.anthropic.com](https://console.anthropic.com)
+
+**Example configuration:**
+```toml
+[ai.mentor]
+provider = "claude"
+model_complex = "claude-sonnet-4-5-20250929"     # Latest Sonnet 4.5
+model_simple = "claude-haiku-4-5-20251001"       # Latest Haiku 4.5 (new!)
+
+# Alternative models:
+# - "claude-3-5-sonnet-20241022" (Previous Sonnet 3.5)
+# - "claude-3-5-haiku-20241022" (Previous Haiku 3.5)
+```
+
 **Note**: API keys are stored in Skate's encrypted storage, never in the config file.
 
 ## 🎮 Usage
 
-### Navigation
+**Note:** The interactive TUI is currently being integrated. The features below describe the planned user experience based on implemented internal packages.
+
+### Navigation (Planned)
 
 - **Arrow Keys** or **h/j/k/l**: Navigate screens
 - **Enter**: Select/Confirm
@@ -132,7 +199,7 @@ mods --settings
 - **?**: Show help
 - **q**: Quit (from Dashboard)
 
-### Screens
+### Screens (Planned)
 
 - **Dashboard** (`d`): Overview of character, quests, and stats
 - **Quest Board** (`q`): Browse and manage quests
@@ -140,7 +207,7 @@ mods --settings
 - **Mentor** (`m`): Chat with AI for coding help
 - **Settings** (`s`): Adjust configuration
 
-### Global Hotkeys
+### Global Hotkeys (Planned)
 
 - **Ctrl+T**: Pause/Resume session timer (works anywhere)
 - **Ctrl+C**: Quit application
@@ -356,16 +423,22 @@ Contributions are welcome! Please:
 
 ## 🗺️ Roadmap
 
-### MVP (v0.1.0) - Complete! ✅
+### MVP (v0.1.0) - In Progress 🚧
 
-- ✅ Character system with XP/leveling
-- ✅ Quest system (commits, lines)
-- ✅ Beautiful TUI with Bubble Tea
-- ✅ Git activity monitoring
-- ✅ Data persistence with Skate
-- ✅ AI mentor integration (Crush/Mods/Claude)
-- ✅ Session timer tracking
-- ✅ Comprehensive test suite
+**Core Systems (Implemented):**
+- ✅ Character system with XP/leveling (`internal/game/character.go`)
+- ✅ Quest system (commits, lines) (`internal/game/quest.go`)
+- ✅ TUI components with Bubble Tea (`internal/ui/`)
+- ✅ Git activity monitoring (`internal/watcher/git.go`)
+- ✅ Data persistence with Skate (`internal/storage/skate.go`)
+- ✅ AI provider interfaces (`internal/ai/`)
+- ✅ Session timer tracking (`internal/watcher/session.go`)
+- ✅ Comprehensive test suite (>80% coverage on core packages)
+
+**Integration (In Progress):**
+- 🚧 Wire main.go to launch Bubble Tea application
+- 🚧 Connect all components into working application
+- 🚧 End-to-end testing of complete workflow
 
 ### Post-MVP Features
 

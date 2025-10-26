@@ -4,7 +4,7 @@
 
 CodeQuest is a terminal-based gamified developer productivity tool that turns your Git commits into XP, your coding sessions into quests, and your progress into an RPG character journey. Built with Go and the beautiful Charmbracelet ecosystem.
 
-**⚠️ STATUS: IN DEVELOPMENT** - Core systems implemented, main application wiring in progress. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for details.
+**⚠️ STATUS: v0.1.0-beta - Functional MVP** - Core features working, testing and feedback welcome. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for details.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/AutumnsGrove/codequest)
 [![Go Version](https://img.shields.io/badge/go-1.21+-blue)](https://go.dev)
@@ -20,6 +20,15 @@ CodeQuest is a terminal-based gamified developer productivity tool that turns yo
 - 🔥 **Daily Streaks**: Track consecutive days of activity
 - 📈 **Beautiful Dashboard**: TUI showing all your stats and progress
 - 💾 **Auto-save**: All progress persists between sessions
+
+## ⚠️ Beta Status
+
+CodeQuest v0.1.0-beta is a functional MVP release. All core features are implemented and tested, but this is early-stage software:
+- ✅ Core game mechanics work (commits → XP → level-ups → quests)
+- ✅ All UI screens functional (Dashboard, Quest Board, Character, Mentor)
+- ⚠️ You may encounter bugs or rough edges
+- 📝 Feedback and bug reports welcome via GitHub Issues
+- 🎓 This is an educational project - use at your own discretion
 
 ## 🚀 Quick Start
 
@@ -57,9 +66,9 @@ go install github.com/AutumnsGrove/codequest/cmd/codequest@latest
 
 ### First Run
 
-**Note:** The application is currently being wired up. The binary builds successfully, but the interactive TUI is not yet launched. See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for implementation progress.
+**Note:** CodeQuest v0.1.0-beta is a functional MVP - core features work, but this is early-stage software. Feedback and bug reports are welcome!
 
-When the application is complete, launching CodeQuest will:
+Launching CodeQuest will:
 
 1. **Create Your Character** - Choose your name
 2. **Accept a Quest** - Browse the Quest Board (press `Q`)
@@ -67,8 +76,8 @@ When the application is complete, launching CodeQuest will:
 4. **Watch Your Progress** - Earn XP and level up!
 
 ```bash
-# Planned workflow (not yet functional)
-codequest                    # Will launch the game (currently shows placeholder)
+# Launch CodeQuest (beta release - core features functional)
+codequest                    # Launch the game
 
 # In another terminal, work on your project
 cd ~/projects/my-project

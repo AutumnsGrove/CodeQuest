@@ -1,12 +1,16 @@
 # TODO
 Current Date: 2025-10-25
 
-## Next Up
-- [ ] Add in @BaseProject
-- [ ] Clean up directory
-- [ ] Update the main execution, it doesn't work. Still shows "Under Construction" message with commit `d0bd00c` tagged.
-- [ ] Needs to become a globally callable command from anywhere in the terminal
-- [ ] Revert back to Under Construction
- - Less than v1 versioning
- - back to Beta
-- [ ] A LOT of these "Development status" and "NExt Steps" plans are either outdated or versioning poorly. The "consistent file updates" update needs to happen. Better guidance with Claude.md?
+## High Priority
+- [ ] User testing and feedback collection for v0.1.0-beta
+- [ ] Bug fixes from beta testing feedback
+- [ ] Performance optimization (profiling UI rendering)
+
+## Post-Beta Enhancements (from NEXT_STEPS.md)
+- [ ] Advanced quest types (tests, PR reviews, refactoring)
+- [ ] Skill tree system implementation
+- [ ] Achievement system
+
+## Documentation
+- [ ] Create video walkthrough/demo
+- [ ] Expand troubleshooting guide based on user issues

@@ -37,6 +37,10 @@ go.work
 .settings/
 .DS_Store
 
+# Secrets and API keys
+secrets.json
+.claude/
+
 # Environment variables
 .env
 .env.local
@@ -60,6 +64,14 @@ coverage.html
 tmp/
 temp/
 
+# Session/save files (for game state)
+*.save
+*.session
+
+# Backup files
+*.bak
+*.backup
+
 # OS specific files
 .DS_Store
 .DS_Store?
@@ -69,12 +81,16 @@ temp/
 ehthumbs.db
 Thumbs.db
 
+# WakaTime project file
+.wakatime-project
+
 # API keys and secrets (never commit these!)
 *_api_key*
 *_secret*
 *.key
 *.pem
 credentials.json
+secrets_template.json
 
 # Local configuration
 config.local.toml
@@ -89,17 +105,6 @@ config.local.json
 # Cache directories
 .cache/
 __pycache__/
-
-# Session/save files
-*.save
-*.session
-
-# Backup files
-*.bak
-*.backup
-
-# WakaTime project file
-.wakatime-project
 
 # CI/CD artifacts
 .artifact/

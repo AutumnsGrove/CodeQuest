@@ -23,6 +23,26 @@ This document provides comprehensive guidance for Claude Code (or any AI assista
 3. Beautiful - Showcase Charmbracelet's capabilities
 4. Fun - Make coding feel like an adventure
 
+<!-- BaseProject: Core Behavior -->
+## Essential Instructions (Always Follow)
+
+### Core Behavior
+- Do what has been asked; nothing more, nothing less
+- NEVER create files unless absolutely necessary for achieving your goal
+- ALWAYS prefer editing existing files to creating new ones
+- NEVER proactively create documentation files (*.md) or README files unless explicitly requested
+
+### Naming Conventions
+- **Directories**: Use CamelCase (e.g., `VideoProcessor`, `AudioTools`, `DataAnalysis`)
+- **Date-based paths**: Use skewer-case with YYYY-MM-DD (e.g., `logs-2025-01-15`, `backup-2025-12-31`)
+- **No spaces or underscores** in directory names (except date-based paths)
+
+### Communication Style
+- Be concise but thorough
+- Explain reasoning for significant decisions
+- Ask for clarification when requirements are ambiguous
+- Proactively suggest improvements when appropriate
+
 ## Development Philosophy
 
 ### 1. Real Work First
@@ -175,6 +195,27 @@ func renderTitle(text string) string {
 }
 ```
 
+<!-- BaseProject: House Agents -->
+## House Agents - Quick Reference
+
+### When to Use House Agents Proactively
+
+**house-research**: Automatically invoke when searching across 20+ files for:
+- Finding patterns across the codebase
+- Searching for TODO/FIXME comments
+- Locating API endpoints or function definitions
+- Documentation searches
+- Complex codebase analysis
+
+**Example**: "Find all the authentication functions" → Automatically use house-research to find authentication functions
+
+### Pattern Recognition
+Main Claude should invoke house-research when:
+- User mentions searching across many files
+- Task involves finding patterns in the codebase
+- Need to locate specific code patterns or TODOs
+- Documentation or API searches required
+
 ## AI Integration Guidelines
 
 ### Provider Hierarchy
@@ -261,6 +302,7 @@ func (r *RateLimiter) Allow() bool {
 }
 ```
 
+<!-- BaseProject: Git Workflow -->
 ## Git Workflow
 
 ### MANDATORY: Follow GIT_COMMIT_STYLE_GUIDE.md
@@ -285,6 +327,28 @@ func (r *RateLimiter) Allow() bool {
 - `build`: Build system changes
 - `ci`: CI/CD changes
 
+### After Completing Major Changes
+
+**You MUST:**
+1. Check git status: `git status`
+2. Review recent commits for style: `git log --oneline -5`
+3. Stage changes: `git add .`
+4. Commit with proper message format (see below)
+5. Verify commit succeeded: `git status && git log --oneline -1`
+
+### Commit Message Template
+```
+[Action] [Brief description of what was changed]
+
+- [Specific change 1 with technical detail]
+- [Specific change 2 with technical detail]
+- [Specific change 3 with technical detail]
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
 ### Commit Examples
 ```bash
 # Feature addition
@@ -305,6 +369,54 @@ git commit -m "refactor: Extract quest validation logic"
 - `develop` - Active development
 - `feature/*` - New features
 - `fix/*` - Bug fixes
+
+### When to Commit
+Commit changes immediately after:
+- ✅ Completing a significant feature or bug fix
+- ✅ Adding new functionality that works correctly
+- ✅ Making configuration or structural improvements
+- ✅ Implementing user-requested features
+- ✅ Fixing critical errors or security issues
+
+<!-- BaseProject: TODO Management -->
+## TODO Management
+
+### MANDATORY: Maintain TODOS.md
+
+You MUST actively maintain the `TODOS.md` file in the project root. This is a critical part of the workflow.
+
+**Always check TODOS.md first** when starting a new task or session
+
+**Update TODOS.md immediately** when:
+- A task is completed (mark with ✅ or remove)
+- A new task is identified (add it)
+- A task's priority or status changes
+- You discover subtasks or dependencies
+
+**Format for TODOS.md:**
+```markdown
+# Project TODOs
+
+## High Priority
+- [ ] Task description here
+- [x] Completed task (keep for reference)
+
+## Medium Priority
+- [ ] Another task
+
+## Low Priority / Future Ideas
+- [ ] Nice to have feature
+
+## Blocked
+- [ ] Task blocked by X (waiting on...)
+```
+
+**Use clear task descriptions** that include:
+- What needs to be done
+- Why it's important (if not obvious)
+- Any dependencies or blockers
+
+**Keep it current**: Remove or archive completed tasks regularly to keep the list manageable
 
 ## Development Workflow
 
@@ -493,13 +605,56 @@ go test -memprofile=mem.prof -bench=.
 go tool pprof mem.prof
 ```
 
+<!-- BaseProject: Security Best Practices -->
 ## Security Best Practices
 
 ### API Key Management
-- NEVER commit API keys
-- Store in Skate's encrypted storage
-- Use environment variables for CI/CD
-- Implement key rotation
+
+**CodeQuest-Specific:**
+- Primary storage: Skate's encrypted storage (`codequest.openrouter_api_key`, `codequest.anthropic_api_key`)
+- Access via: `skate get codequest.openrouter_api_key`
+- NEVER commit API keys to version control
+- Implement key rotation for compromised keys
+
+**General Best Practices (for other projects):**
+- Store API keys in `secrets.json` files (add to `.gitignore` immediately)
+- Provide `secrets_template.json` with empty/example values for setup
+- Use environment variables as fallbacks
+- Show clear status messages about key loading source
+
+**Example Loading Pattern (Python projects):**
+```python
+def load_secrets():
+    """Load API keys from secrets.json file."""
+    secrets_path = os.path.join(os.path.dirname(__file__), "secrets.json")
+    try:
+        with open(secrets_path, 'r') as f:
+            secrets = json.load(f)
+        return secrets
+    except FileNotFoundError:
+        print(f"Warning: secrets.json not found. Using environment variables as fallback.")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Error parsing secrets.json: {e}. Using environment variables as fallback.")
+        return {}
+
+# Load secrets at startup
+SECRETS = load_secrets()
+API_KEY = SECRETS.get("anthropic_api_key", os.getenv("ANTHROPIC_API_KEY", ""))
+```
+
+**DO:**
+- Store all API keys securely (Skate for CodeQuest, secrets.json for others)
+- Add secrets files to `.gitignore` immediately
+- Provide template files with empty values for setup
+- Use environment variables as fallbacks
+- Include error handling for missing/malformed secrets
+
+**DON'T:**
+- Hardcode API keys directly in source code
+- Commit actual API keys to version control
+- Store keys in configuration files that might be shared
+- Log or print actual API key values
 
 ### Input Validation
 ```go

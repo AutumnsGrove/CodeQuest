@@ -33,7 +33,7 @@ NC=\033[0m # No Color
 
 .PHONY: all build clean test coverage coverage-html run install dev fmt vet lint \
         deps dev-deps help docker-build docker-run release-all bench prof \
-        check pre-commit init
+        check pre-commit init install-global uninstall-global install-deps
 
 # Default target
 all: clean fmt vet test build
@@ -120,6 +120,26 @@ uninstall:
 	@echo "$(YELLOW)Uninstalling $(BINARY_NAME)...$(NC)"
 	rm -f $(GOPATH)/bin/$(BINARY_NAME)
 	@echo "$(GREEN)$(BINARY_NAME) uninstalled$(NC)"
+
+## install-global: Install codequest to /usr/local/bin for global access
+install-global: build
+	@echo "$(GREEN)Installing $(BINARY_NAME) to /usr/local/bin...$(NC)"
+	@cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/$(BINARY_NAME)
+	@chmod +x /usr/local/bin/$(BINARY_NAME)
+	@echo "$(GREEN)✅ $(BINARY_NAME) installed! Run 'codequest' from anywhere.$(NC)"
+
+## uninstall-global: Remove codequest from /usr/local/bin
+uninstall-global:
+	@echo "$(YELLOW)Removing $(BINARY_NAME) from /usr/local/bin...$(NC)"
+	@rm -f /usr/local/bin/$(BINARY_NAME)
+	@echo "$(GREEN)✅ $(BINARY_NAME) uninstalled.$(NC)"
+
+## install-deps: Check for required dependencies (Skate, optional Mods)
+install-deps:
+	@echo "$(GREEN)Checking dependencies...$(NC)"
+	@which skate > /dev/null || echo "$(RED)⚠️  Skate not found. Install: brew install charmbracelet/tap/skate$(NC)"
+	@which mods > /dev/null || echo "$(YELLOW)ℹ️  Mods not found (optional). Install: brew install charmbracelet/tap/mods$(NC)"
+	@echo "$(GREEN)✅ Dependency check complete$(NC)"
 
 ## clean: Clean build artifacts
 clean:

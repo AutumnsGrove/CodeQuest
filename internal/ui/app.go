@@ -87,6 +87,9 @@ type Model struct {
 	// Notification system - Real-time event notifications
 	notifications       []Notification // Queue of pending notifications
 	currentNotification *Notification  // Currently displayed notification (nil if none)
+
+	// Application metadata
+	version string // Application version (e.g., "v0.1.0-beta")
 }
 
 // NewModel creates and initializes a new application model.
@@ -95,13 +98,14 @@ type Model struct {
 // Parameters:
 //   - storageClient: Skate storage client for save/load operations (required)
 //   - cfg: Application configuration (required)
+//   - version: Application version string for display (e.g., "v0.1.0-beta")
 //
 // Returns:
 //   - *Model: A new Model instance ready for Bubble Tea initialization
 //
 // The model starts on the Dashboard screen with loading state active.
 // Init() will attempt to load saved data from storage.
-func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
+func NewModel(storageClient *storage.SkateClient, cfg *config.Config, version string) *Model {
 	// Initialize AI Manager with providers
 	aiManager := initializeAIManager(cfg)
 
@@ -157,6 +161,9 @@ func NewModel(storageClient *storage.SkateClient, cfg *config.Config) *Model {
 		// Notifications
 		notifications:       []Notification{},
 		currentNotification: nil,
+
+		// Application metadata
+		version: version,
 	}
 }
 

@@ -1,0 +1,78 @@
+#!/bin/bash
+# Commit message validation hook for CodeQuest
+# Validates commit messages follow the project style guide
+# Supports both conventional commits and custom action-based format
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Read commit message from file
+commit_msg_file="$1"
+commit_msg=$(cat "$commit_msg_file")
+
+# Get first line of commit message
+first_line=$(echo "$commit_msg" | head -n 1)
+
+# Define valid action verbs for custom format
+valid_actions="Add|Update|Fix|Refactor|Remove|Enhance|Improve|Create|Delete|Rename"
+
+# Define valid conventional commit types (from GIT_COMMIT_STYLE_GUIDE.md)
+conventional_types="feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert"
+
+# Validation flags
+is_valid=false
+error_msg=""
+
+# Check for custom format: "Action Brief description"
+if echo "$first_line" | grep -qE "^($valid_actions) "; then
+    is_valid=true
+fi
+
+# Check for conventional commit format: "type: description" or "type(scope): description"
+if echo "$first_line" | grep -qE "^($conventional_types)(\(.+\))?: "; then
+    is_valid=true
+fi
+
+# Validate commit message length
+if [ ${#first_line} -gt 72 ]; then
+    echo -e "${YELLOW}Warning: First line is ${#first_line} characters (recommended: ≤72)${NC}"
+fi
+
+# If neither format matches, show error
+if [ "$is_valid" = false ]; then
+    echo -e "${RED}ERROR: Invalid commit message format${NC}"
+    echo ""
+    echo "First line: $first_line"
+    echo ""
+    echo "Expected formats:"
+    echo ""
+    echo "1. Custom format (from CodeQuest CLAUDE.md):"
+    echo "   [Action] Brief description"
+    echo "   Valid actions: Add, Update, Fix, Refactor, Remove, Enhance, Improve, Create, Delete, Rename"
+    echo "   Example: Add character leveling system"
+    echo ""
+    echo "2. Conventional commit format (from GIT_COMMIT_STYLE_GUIDE.md):"
+    echo "   type: description  OR  type(scope): description"
+    echo "   Valid types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert"
+    echo "   Example: feat: add character leveling system"
+    echo ""
+    echo "See GIT_COMMIT_STYLE_GUIDE.md for detailed guidelines"
+    echo ""
+    echo -e "${YELLOW}To bypass this check (use sparingly):${NC}"
+    echo "  git commit --no-verify -m 'Your message'"
+    echo ""
+    exit 1
+fi
+
+# Recommended: Check for Co-Authored-By line
+if ! echo "$commit_msg" | grep -q "Co-Authored-By:"; then
+    echo -e "${YELLOW}Note: Consider adding 'Co-Authored-By: Claude <noreply@anthropic.com>' to your commit message${NC}"
+    echo ""
+fi
+
+# Success
+echo -e "${GREEN}✓ Commit message format validated${NC}"
+exit 0

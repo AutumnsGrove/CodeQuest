@@ -1,0 +1,122 @@
+#!/bin/bash
+# Pre-push hook for CodeQuest
+# Runs comprehensive tests before pushing to remote repository
+# Prevents pushing with failing tests or poor code quality
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}CodeQuest Pre-Push Checks${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Check if go is installed
+if ! command -v go &> /dev/null; then
+    echo -e "${RED}✗ Go is not installed${NC}"
+    exit 1
+fi
+
+push_failed=0
+
+# ============================================================================
+# RUN FULL TEST SUITE
+# ============================================================================
+echo -e "${YELLOW}Running full test suite...${NC}"
+echo ""
+
+if ! go test ./... -v; then
+    echo ""
+    echo -e "${RED}✗ Tests failed!${NC}"
+    echo -e "${YELLOW}Fix failing tests before pushing.${NC}"
+    push_failed=1
+else
+    echo ""
+    echo -e "${GREEN}✓ All tests passed!${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# RUN GO VET ON ALL PACKAGES
+# ============================================================================
+echo -e "${YELLOW}Running go vet on all packages...${NC}"
+
+if ! go vet ./... 2>&1 | grep -v "no Go files"; then
+    echo -e "${RED}✗ go vet found issues${NC}"
+    push_failed=1
+else
+    echo -e "${GREEN}✓ go vet analysis passed${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# CHECK CODE FORMATTING
+# ============================================================================
+echo -e "${YELLOW}Checking code formatting...${NC}"
+
+unformatted=$(gofmt -l ./...)
+if [ -n "$unformatted" ]; then
+    echo -e "${RED}✗ Code formatting issues found:${NC}"
+    echo "$unformatted" | sed 's/^/  /'
+    echo ""
+    echo -e "${YELLOW}Fix with: gofmt -w ./...${NC}"
+    push_failed=1
+else
+    echo -e "${GREEN}✓ All code properly formatted${NC}"
+fi
+
+echo ""
+
+# ============================================================================
+# CHECK TEST COVERAGE
+# ============================================================================
+echo -e "${YELLOW}Checking test coverage...${NC}"
+
+# Run coverage on core packages
+coverage_files=$(go test ./... -cover -coverprofile=coverage.out.tmp 2>&1 | grep -E "coverage:|ok\s+" || true)
+
+if [ -f coverage.out.tmp ]; then
+    avg_coverage=$(go tool cover -func=coverage.out.tmp 2>/dev/null | tail -1 | awk '{print $3}' | sed 's/%//')
+    if [ -n "$avg_coverage" ]; then
+        echo -e "${YELLOW}Average coverage: ${avg_coverage}%${NC}"
+
+        # Warn if coverage drops below 70%
+        coverage_int=${avg_coverage%.*}
+        if [ "$coverage_int" -lt 70 ]; then
+            echo -e "${YELLOW}⚠ Coverage below 70% - consider adding tests${NC}"
+        else
+            echo -e "${GREEN}✓ Coverage above 70%${NC}"
+        fi
+    fi
+    rm -f coverage.out.tmp
+fi
+
+echo ""
+
+# ============================================================================
+# FINAL RESULTS
+# ============================================================================
+if [ $push_failed -eq 1 ]; then
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}Pre-push checks failed!${NC}"
+    echo -e "${RED}Fix the issues above before pushing.${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${YELLOW}To bypass (use ONLY for emergencies):${NC}"
+    echo "  git push --no-verify"
+    exit 1
+else
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✓ All pre-push checks passed!${NC}"
+    echo -e "${GREEN}Ready to push.${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    exit 0
+fi

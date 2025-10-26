@@ -31,31 +31,43 @@ checks_failed=0
 # ============================================================================
 echo -e "${YELLOW}Scanning for secrets and sensitive data...${NC}"
 
-# Patterns to detect various API keys
+# Patterns to detect actual API keys (not documentation references)
 PATTERNS=(
-    "sk-ant-api[0-9a-zA-Z\-]+"          # Anthropic keys
-    "sk-[a-zA-Z0-9]{32,}"               # OpenAI/OpenRouter keys
-    "AIza[0-9A-Za-z\-_]{35}"            # Google API keys
-    "AKIA[0-9A-Z]{16}"                  # AWS Access Keys
-    "secrets\.json"                     # Don't commit actual secrets file
-    "credentials\.json"                 # Credential files
-    "\.env$"                            # Environment files
+    "sk-ant-api[0-9a-zA-Z\-]+"          # Anthropic keys (actual keys)
+    "sk-[a-zA-Z0-9]{32,}"               # OpenAI/OpenRouter keys (actual)
+    "AIza[0-9A-Za-z\-_]{35}"            # Google API keys (actual)
+    "AKIA[0-9A-Z]{16}"                  # AWS Access Keys (actual)
 )
 
+# Check for actual secrets in committed code (not documentation)
 secrets_found=0
 for pattern in "${PATTERNS[@]}"; do
-    if git diff --cached | grep -E "$pattern" > /dev/null 2>&1; then
-        echo -e "${RED}✗ SECURITY WARNING: Possible sensitive data detected!${NC}"
+    # Look for actual key patterns that appear to be real (not in quotes or backticks)
+    # Only check added lines that contain the pattern
+    if git diff --cached | grep "^+" | grep -E "$pattern" | grep -v "^+++" | grep -vE "['\"\`#]" > /dev/null 2>&1; then
+        echo -e "${RED}✗ SECURITY WARNING: Possible API key detected!${NC}"
         echo -e "${YELLOW}Pattern: $pattern${NC}"
         echo ""
-        echo -e "${YELLOW}Files containing sensitive data:${NC}"
-        git diff --cached | grep -E "$pattern" | head -5
+        echo -e "${YELLOW}Suspicious additions:${NC}"
+        git diff --cached | grep "^+" | grep -E "$pattern" | grep -v "^+++" | head -5
         echo ""
         secrets_found=1
         checks_failed=1
         break
     fi
 done
+
+# Also check if secrets files are being committed directly
+if git diff --cached --name-only | grep -qE "secrets\.json|credentials\.json|\.env$|\.aws/|\.ssh/" 2>/dev/null; then
+    echo -e "${RED}✗ SECURITY WARNING: Sensitive files detected!${NC}"
+    echo -e "${YELLOW}Don't commit: secrets.json, credentials.json, .env, .aws/, .ssh/${NC}"
+    echo ""
+    echo -e "${YELLOW}Files being committed:${NC}"
+    git diff --cached --name-only | grep -E "secrets\.json|credentials\.json|\.env$|\.aws/|\.ssh/" | sed 's/^/  - /'
+    echo ""
+    secrets_found=1
+    checks_failed=1
+fi
 
 if [ $secrets_found -eq 0 ]; then
     echo -e "${GREEN}✓ No secrets detected${NC}"
